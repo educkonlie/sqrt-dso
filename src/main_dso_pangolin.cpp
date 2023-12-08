@@ -519,7 +519,7 @@ int main( int argc, char** argv )
         struct timeval tv_end;
         gettimeofday(&tv_end, NULL);
 
-        fullSystem->printResult("/mnt/data/3/result.txt");
+        fullSystem->printResult("/mnt/data/sqrt-dso/result.txt");
 
         int numFramesProcessed = abs(idsToPlay[0]-idsToPlay.back());
         double numSecondsProcessed = fabs(reader->getTimestamp(idsToPlay[0])-reader->getTimestamp(idsToPlay.back()));
