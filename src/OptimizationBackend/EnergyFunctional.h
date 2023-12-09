@@ -89,10 +89,6 @@ public:
 
 	void setAdjointsF(CalibHessian* Hcalib);
 
-#ifdef ROOTBA
-    void test_QR_decomp();
-#endif
-
 	std::vector<EFFrame*> frames;
 	int nPoints, nFrames, nResiduals;
 
@@ -101,6 +97,7 @@ public:
 #ifdef NEW_METHOD
     MatXX JM;
     VecX rM;
+    void qr(MatXX &Jp, MatXX &Jl);
 #endif
 
 	int resInA, resInL, resInM;

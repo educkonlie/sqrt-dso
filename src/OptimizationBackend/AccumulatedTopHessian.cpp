@@ -76,7 +76,7 @@ namespace dso
 
         int ngoodres = 0;
         std::vector<int > target_id;
-        int hid;
+//        int hid;
 
         for(EFResidual* r : p->residualsAll) {
             if(mode==0) {
@@ -89,11 +89,9 @@ namespace dso
                 assert(r->isLinearized);
             }
 
-
-
             RawResidualJacobian* rJ = r->J;
             int htIDX = r->hostIDX + r->targetIDX*nframes[tid];
-            hid = r->hostIDX;
+//            hid = r->hostIDX;
             target_id.push_back(r->targetIDX);
 
             Mat18f dp = ef->adHTdeltaF[htIDX];
@@ -103,8 +101,6 @@ namespace dso
                 resApprox = rJ->resF;
             if(mode==2)
                 resApprox = r->res_toZeroF;
-
-
 
             // need to compute JI^T * r, and Jab^T * r. (both are 2-vectors).
             Vec2f JI_r(0,0);
@@ -152,7 +148,6 @@ namespace dso
 
             //! 打印host, target, C, xi, ab
             //! 上面的是重投影误差的偏导，另外还要有8×2的矩阵JIdx，即8维的residual和x, y的偏导
-
 
             nres[tid]++;
             k++;
@@ -220,7 +215,6 @@ namespace dso
 
 //        std::cout << "Jr1:\n" << Jr1 << std::endl;
 //        std::cout << "Jr2:\n" << Jr2.transpose() << std::endl;
-
 //        Eigen::SparseMatrix<float> A(8 * k - 1, CPARS + 8 * FRAMES);
         MatXXf A(8 * k - 1, CPARS + 8 * FRAMES);
         VecXf x(CPARS + 8 * FRAMES);
@@ -516,97 +510,6 @@ namespace dso
     }
 #endif
 
-#ifdef ROOTBA
-void AccumulatedTopHessianSSE::my_print_Q2(VecXf &A, int k, int n)
-{
-        if (k == 0) {
-            printf("\n");
-            for (int i = 0; i < n - 2; i++)
-                printf("0\t");
-            printf("-a[0] / p[1]\ta[1] / p[1]\n");
-            return;
-        }
-        printf("\n");
-        for (int i = 0; i < n - k - 2; i++)
-            printf("0\t");
-        printf("-p[%d] / p[%d]\t", k, k + 1);
-        for (int i = k; i >= 0; i--) {
-            printf("(a[%d] / p[%d]) * (a[%d] / p[%d])\t", i, k, k + 1, k + 1);
-        }
-        printf("\n");
-}
-    void AccumulatedTopHessianSSE::my_generate_Q2(dso::MatXXf &Q2, dso::VecXf &A)
-    {
-        std::vector<float> a, p;
-        int n = A.rows();
-
-        double temp = 0.0;
-        Q2 = MatXXf::Zero(n, n - 1);
-
-        for (int i = 0; i < n; i++) {
-            if (A[n - 1 - i] == 0) {
-                A[n - 1 - i] = 1e-10;
-                // 为0的行还不少，这些都可以优化
-//                std::cout << "..rkf..........." << std::endl;
-            }
-            a.push_back(A[n - 1 - i]);
-            temp += a[i] * a[i];
-            p.push_back(sqrt(temp));
-        }
-
-        for (int k = 0; k < n - 1; k++) {
-            if (k == 0) {
-                Q2(n - 2, n - 1 - 1) = -a[0] / p[1];
-                Q2(n - 1, n - 1 - 1) = a[1] / p[1];
-                continue;
-            }
-            for (int i = 0; i <= k; i++) {
-                Q2(n - 1 - i, n - 1 - k - 1) = (a[i] / p[k]) * (a[k + 1] / p[k + 1]);
-            }
-            Q2(n - 1 - k - 1, n - 1 - k - 1) = -p[k] / p[k + 1];
-        }
-    }
-    void AccumulatedTopHessianSSE::new_QR_decomp(std::vector<float> &l1, std::vector<float> &l2,
-                                                 std::vector<float> &o1, std::vector<float> &o2,
-                                                 float a, float b)
-    {
-        float r = sqrt(a * a + b * b);
-        float c = a / r;
-        float s = b / r;
-
-        for (int i = 0; i < l1.size(); i++) {
-            o1.push_back(c * l1[i] + s * l2[i]);
-            o2.push_back(-s * l1[i] + c * l2[i]);
-        }
-    }
-    void AccumulatedTopHessianSSE::QR_decomp(VecXf A, MatXXf &Q, VecXf &R)
-    {
-        Q.setIdentity();
-        R = A;
-        MatXXf Q1;
-        for (int i = A.size(); i >= 1; i--) {
-            float b = R(i);
-            if (std::abs(b) < 0.00001)
-                continue;
-            Q1.setIdentity();
-
-            float a = R(i - 1);
-            float r = std::sqrt(a * a + b * b);
-            float c = a / r;
-            float s = -b / r;
-            Q1(i - 1, i - 1) = c;
-            Q1(i - 1, i) = s;
-            Q1(i, i - 1) = -s;
-            Q1(i, i) = c;
-
-            Q = Q * Q1;
-
-            R(i - 1) = r;
-            R(i) = 0.0;
-        }
-    }
-#endif
-
     template void AccumulatedTopHessianSSE::addPoint<0>
             (MatXXf &H1, VecXf &b1,
              EFPoint* p, EnergyFunctional const * const ef, int tid);
@@ -619,59 +522,6 @@ void AccumulatedTopHessianSSE::stitchDouble(MatXX &H, VecX &b, EnergyFunctional 
 {
     H = MatXX::Zero(nframes[tid]*8+CPARS, nframes[tid]*8+CPARS);
 	b = VecX::Zero(nframes[tid]*8+CPARS);
-
-#if 0
-	for(int h=0;h<nframes[tid];h++)
-		for(int t=0;t<nframes[tid];t++) {
-            //! h:[0, nframes - 1], t:[0, nframes - 1]
-			int hIdx = CPARS+h*8;
-			int tIdx = CPARS+t*8;
-			int aidx = h+nframes[tid]*t;
-#ifdef USE_MYH
-            MatPCPC accH = myH[aidx].cast<myscalar>();
-#else
-            acc[tid][aidx].finish();
-            if(acc[tid][aidx].num==0) continue;
-            MatPCPC accH = acc[tid][aidx].H.cast<myscalar>();
-#endif
-
-			H.block<8,8>(hIdx, hIdx).noalias() +=
-                    EF->adHost[aidx] * accH.block<8,8>(CPARS,CPARS) * EF->adHost[aidx].transpose();
-
-			H.block<8,8>(tIdx, tIdx).noalias() +=
-                    EF->adTarget[aidx] * accH.block<8,8>(CPARS,CPARS) * EF->adTarget[aidx].transpose();
-
-			H.block<8,8>(hIdx, tIdx).noalias() +=
-                    EF->adHost[aidx] * accH.block<8,8>(CPARS,CPARS) * EF->adTarget[aidx].transpose();
-
-			H.block<8,CPARS>(hIdx,0).noalias() +=
-                    EF->adHost[aidx] * accH.block<8,CPARS>(CPARS,0);
-
-			H.block<8,CPARS>(tIdx,0).noalias() +=
-                    EF->adTarget[aidx] * accH.block<8,CPARS>(CPARS,0);
-
-            //! <C, C>是没有伴随的
-			H.topLeftCorner<CPARS,CPARS>().noalias() += accH.block<CPARS,CPARS>(0,0);
-
-			b.segment<8>(hIdx).noalias() += EF->adHost[aidx] * accH.block<8,1>(CPARS,8+CPARS);
-
-			b.segment<8>(tIdx).noalias() += EF->adTarget[aidx] * accH.block<8,1>(CPARS,8+CPARS);
-
-			b.head<CPARS>().noalias() += accH.block<CPARS,1>(0,8+CPARS);
-		}
-
-	// ----- new: copy transposed parts.
-	for(int h=0;h<nframes[tid];h++) {
-		int hIdx = CPARS+h*8;
-		H.block<CPARS,8>(0,hIdx).noalias() = H.block<8,CPARS>(hIdx,0).transpose();
-
-		for(int t=h+1;t<nframes[tid];t++) {
-			int tIdx = CPARS+t*8;
-			H.block<8,8>(hIdx, tIdx).noalias() += H.block<8,8>(tIdx, hIdx).transpose();
-			H.block<8,8>(tIdx, hIdx).noalias() = H.block<8,8>(hIdx, tIdx).transpose();
-		}
-	}
-#endif
 
 	if(usePrior) {
 		assert(useDelta);

@@ -79,15 +79,6 @@ public:
 	void stitchDouble(MatXX &H, VecX &b, EnergyFunctional const * const EF,
                       bool usePrior, bool useDelta, int tid=0);
 
-#ifdef ROOTBA
-        void QR_decomp(VecXf A, MatXXf &Q, VecXf &R);
-        void my_print_Q2(VecXf &A, int k, int n);
-        void my_generate_Q2(MatXXf &Q2, VecXf &A);
-        void new_QR_decomp(std::vector<float> &l1, std::vector<float> &l2,
-                                                     std::vector<float> &o1, std::vector<float> &o2,
-                                                     float a, float b);
-#endif
-
 #if 1
 	template<int mode> void addPoint(MatXXf &H1, VecXf &b1,
                                      EFPoint* p, EnergyFunctional const * const ef, int tid=0);

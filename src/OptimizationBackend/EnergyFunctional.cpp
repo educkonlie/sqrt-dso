@@ -346,6 +346,7 @@ EFFrame* EnergyFunctional::insertFrame(FrameHessian* fh, CalibHessian* Hcalib)
 	HM.rightCols<8>().setZero();
 	HM.bottomRows<8>().setZero();
 #ifdef NEW_METHOD
+    //! 新加入一帧，会给列扩容
     JM.conservativeResize(JM.rows(), 8 * nFrames + CPARS);
     JM.rightCols<8>().setZero();
 #endif
@@ -413,13 +414,15 @@ void EnergyFunctional::marginalizeFrame(EFFrame* fh)
 //	VecX eigenvaluesPre = HM.eigenvalues().real();
 //	std::sort(eigenvaluesPre.data(), eigenvaluesPre.data()+eigenvaluesPre.size());
 //
-    std::cout << "marg frame: " << fh->idx << std::endl;
+//    std::cout << "marg frame: " << fh->idx << std::endl;
 
+    //! 如果fh的index不是frames的最后一个
 	if((int)fh->idx != (int)frames.size()-1) {
 		int io = fh->idx*8+CPARS;	// index of frame to move to end
 		int ntail = 8*(nFrames-fh->idx-1);
 		assert((io+8+ntail) == nFrames*8+CPARS);
 
+        //! 用eigen的矩阵操作交换bM和HM里的两帧内容
 		Vec8 bTmp = bM.segment<8>(io);
 		VecX tailTMP = bM.tail(ntail);
 		bM.segment(io,ntail) = tailTMP;
@@ -435,6 +438,16 @@ void EnergyFunctional::marginalizeFrame(EFFrame* fh)
 		HM.block(io,0,ntail,odim) = botRowsTmp;
 		HM.bottomRows(8) = HtmpRow;
 	}
+#ifdef NEW_METHOD
+#if 0
+    if((int)fh->idx != (int)frames.size()-1) {
+        //! 交换JM里的列
+        MatXX Jtemp = JM.rightCols(8);
+        JM.rightCols(8) = JM.middleCols(CPARS + 8 * fh->idx, 8);
+        JM.middleCols(CPARS + 8 * fh->idx, 8) = Jtemp;
+    }
+#endif
+#endif
 
 
 //	// marginalize. First add prior here, instead of to active.
@@ -443,6 +456,17 @@ void EnergyFunctional::marginalizeFrame(EFFrame* fh)
     //! 逐点相乘，如果是两个向量，结果也为一个等维度向量
     //! 因为这个fh->prior是在对角线上，所以会有这么一个操作
     bM.tail<8>() += fh->prior.cwiseProduct(fh->delta_prior);
+    //! 只有DSO碰到的第一帧会有fh->prior，需要特别加成
+//    std::cout << "fh->prior fh->delta_prior:\n" << fh->prior.transpose() << "\n"
+//            << fh->delta_prior.transpose() << std::endl;
+#ifdef NEW_METHOD
+    if (fh->prior(0) > 1.0) {
+        //! 修改JM, rM
+        std::cout << "marg frame: " << fh->idx << std::endl;
+        std::cout << "fh->prior fh->delta_prior:\n" << fh->prior.transpose() << "\n"
+                << fh->delta_prior.transpose() << std::endl;
+    }
+#endif
 
 //	std::cout << std::setprecision(16) << "HMPre:\n" << HM << "\n\n";
 
@@ -481,6 +505,10 @@ void EnergyFunctional::marginalizeFrame(EFFrame* fh)
 
 //    std::cout << "bM: " << bM.size() << std::endl;
 //    std::cout << "bMScaled: " << bMScaled.size() << std::endl;
+#ifdef NEW_METHOD
+//! 去掉最后八列，去掉最上面八行（包括rM的最上面八行），
+//! 然后择机执行压缩（所谓的压缩就是做一次全列的QR分解，将底下为0的行全部删掉）
+#endif
 
 	// remove from vector, without changing the order!
 	for(unsigned int i=fh->idx; i+1<frames.size();i++) {
@@ -489,7 +517,8 @@ void EnergyFunctional::marginalizeFrame(EFFrame* fh)
 	}
 	frames.pop_back();
 	nFrames--;
-	fh->data->efFrame=0;
+    //! 这里是让efFrame从上级的FrameHessian中脱钩，然后在本函数的末尾会delete fh
+    fh->data->efFrame = 0;
 
 	assert((int)frames.size()*8+CPARS == (int)HM.rows());
 	assert((int)frames.size()*8+CPARS == (int)HM.cols());
@@ -512,7 +541,6 @@ void EnergyFunctional::marginalizeFrame(EFFrame* fh)
 	delete fh;
 }
 
-
 void EnergyFunctional::marginalizePointsF()
 {
 	assert(EFDeltaValid);
@@ -533,54 +561,32 @@ void EnergyFunctional::marginalizePointsF()
 			}
 		}
 	}
-// 	LOG(INFO)<<"allPointsToMarg.size(): "<<allPointsToMarg.size();
-    std::cout << "allPointsToMarg.size(): " << allPointsToMarg.size() << std::endl;
+//    std::cout << "allPointsToMarg.size(): " << allPointsToMarg.size() << std::endl;
 
-    MatXX M;
-    VecX Mb;
-
-#ifdef ROOTBA
-    MatXXf M1;
-    VecXf Mb1;
+    MatXXf M = MatXXf::Zero(accSSE_top_A->nframes[0]*8+CPARS, accSSE_top_A->nframes[0]*8+CPARS);
+    VecXf Mb = VecXf::Zero(accSSE_top_A->nframes[0] * 8+CPARS);
+#ifdef NEW_METHOD
 #endif
+
     //! HM, bM是祖传的。这里M - Msc, Mb - Mbsc是本次新的增量，再加到祖传的HM，bM上。
 
 	accSSE_bot->setZero(nFrames);
 	accSSE_top_A->setZero(nFrames);
-    M = MatXX::Zero(accSSE_top_A->nframes[0]*8+CPARS, accSSE_top_A->nframes[0]*8+CPARS);
-    Mb = VecX::Zero(accSSE_top_A->nframes[0] * 8+CPARS);
-    M1 = MatXXf::Zero(accSSE_top_A->nframes[0]*8+CPARS, accSSE_top_A->nframes[0]*8+CPARS);
-    Mb1 = VecXf::Zero(accSSE_top_A->nframes[0] * 8+CPARS);
 
 	for(EFPoint* p : allPointsToMarg) {
-        accSSE_top_A->addPoint<2>(M1, Mb1, p,this);
-#if 0
-		accSSE_bot->addPoint(p,false);
-#endif
+        accSSE_top_A->addPoint<2>(M, Mb, p,this);
+        //! 这之前要把marg掉的JM, rM提取出来，否则点删掉了就没了
 		removePoint(p);
 	}
 
-	accSSE_top_A->stitchDouble(M,Mb,this,false,false);
-
-#if 0
-    // bot指的是從bot生成（舒爾補）對應的top
-	accSSE_bot->stitchDouble(Msc,Mbsc,this);
-#endif
-
 	resInM+= accSSE_top_A->nres[0];
 
-	MatXX H =  M+M1.cast<myscalar>();
-    VecX b =  Mb+Mb1.cast<myscalar>();
-#ifdef ROOTBA
-//    std::cout << "Mbsc: " << Mbsc.transpose() << std::endl;
-//    std::cout << "Mb1:  " << Mb1.transpose() << std::endl;
-#endif
-
+	MatXX H = M.cast<myscalar>();
+    VecX b = Mb.cast<myscalar>();
     // 每一个点都对应一个完整的H, b。或者说，Marg: point -> (H_nxn, b_n)
     //! 点删掉了，但是相应的约束信息整合到HM，bM里了。
 	HM += setting_margWeightFac*H;
 	bM += setting_margWeightFac*b;
-
 
 //    std::cout << "bM size in marg points: " << bM.size() << std::endl;
 
@@ -683,10 +689,6 @@ void EnergyFunctional::solveSystemF(int iteration, double lambda, CalibHessian* 
 	MatXX  HA_top;
 	VecX   bA_top, bM_top;
 
-#ifdef ROOTBA
-//    test_QR_decomp();
-//    exit(1);
-#endif
     accumulateAF_MT(HA_top, bA_top, multiThreading);
 //  跟上次邊緣化的幀無關的points們，加上新補增的points們，計算最新的殘差，SC掉points，生成最新的H, b系統
 #if 0
@@ -803,45 +805,57 @@ VecX EnergyFunctional::getStitchedDeltaF() const
         d.segment<8>(CPARS+8*h) = frames[h]->delta;
 	return d;
 }
-
-#ifdef ROOTBA
-#include <Eigen/SparseCore>
-#include <Eigen/IterativeLinearSolvers>
-void EnergyFunctional::test_QR_decomp()
-{
-    int m=1000000, n = 100;
-    VecX x(n), b(m);
-    Eigen::SparseMatrix<double> A(m, n);
-// fill A and b
-    Eigen::LeastSquaresConjugateGradient<Eigen::SparseMatrix<double> > lscg;
-    lscg.compute(A);
-    x = lscg.solve(b);
-    std::cout << "#iterations:     " << lscg.iterations() << std::endl;
-    std::cout << "estimated error: " << lscg.error()      << std::endl;
-    std::cout << "x: " << x.transpose() << std::endl;
-// update b, and solve again
-    x = lscg.solve(b);
-//    VecXf A;
-//    A.setZero(8, 1);
-//
-//    A << 3.5, 2.1, 7.7, 0.7, 9.6, 10.1, 2.3, 5.5;
-//
-//    MatXXf Q2;
-//
-//    accSSE_top_A->my_generate_Q2(Q2, A);
-//
-//    std::cout << "Q2:\n" << Q2 << std::endl;
-//    std::cout << "Q2.transpose() * A:\n" << Q2.transpose() * A << std::endl;
-
-//    MatXXf Q;
-//    VecXf R;
-
-// Q2: 第0列到第2列，总共是0-3总共4列。
-//    int n = 5;
-//    for (int i = 3; i >= 0; i--)
-//        accSSE_top_A->my_print_Q2(A, i, n);
-}
+#ifdef NEW_METHOD
+    void EnergyFunctional::qr(MatXX &Jp, MatXX &Jl)
+    {
+        MatXX temp1, temp2;
+        int nres = Jl.rows();
+        int cols = Jl.cols();
+        assert(nres > 3);
+        // i: row
+        // j: col
+        for (int j = 0; j < cols; j++) {
+            double pivot = Jl(j, j);
+//        std::cout << "pivot: " << pivot << std::endl;
+            for (int i = j + 1; i < nres; i++) {
+#if false
+                double a;
+            while ((a = Jl(i, j)) == 0 && i < nres) {
+                i++;
+            }
+#else
+                double a = Jl(i, j);
 #endif
+//            std::cout << "a: " << a << std::endl;
+//            std::cout << "i, j: " << i << " " << j << std::endl;
+                if (i == nres) {
+//                assert(std::abs(pivot) > 0.0000001);
+                    if (pivot == 0.0)
+                        pivot = 0.000001;
+                    Jl(j, j) = pivot;
+                    std::cout << "......pivot...." << pivot << std::endl;
+                    break;
+                }
+                double r = sqrt(pivot * pivot + a * a);
+                double c = pivot / r;
+                double s = a / r;
+                pivot = r;
 
+// 变0的，先到temp
+                temp1 = -s * Jl.row(j) + c * Jl.row(i);
+                temp2 = -s * Jp.row(j) + c * Jp.row(i);
+// 变大的.  j是pivot，在上面，i在下面
+                Jl.row(j) = c * Jl.row(j) + s * Jl.row(i);
+                Jp.row(j) = c * Jp.row(j) + s * Jp.row(i);
+// 变0的, temp => i
+                Jl.row(i) = temp1;
+                Jp.row(i) = temp2;
+
+                Jl(j, j) = pivot = r;
+                Jl(i, j) = 0;
+            }
+        }
+    }
+#endif
 
 }
