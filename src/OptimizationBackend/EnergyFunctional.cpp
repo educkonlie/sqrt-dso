@@ -422,7 +422,7 @@ void EnergyFunctional::marginalizeFrame(EFFrame* fh)
 		int ntail = 8*(nFrames-fh->idx-1);
 		assert((io+8+ntail) == nFrames*8+CPARS);
 
-        //! 用eigen的矩阵操作交换bM和HM里的两帧内容
+        //! 用eigen的矩阵操作将bM和HM里的目标内容移到右下角和末尾
 		Vec8 bTmp = bM.segment<8>(io);
 		VecX tailTMP = bM.tail(ntail);
 		bM.segment(io,ntail) = tailTMP;
@@ -461,7 +461,15 @@ void EnergyFunctional::marginalizeFrame(EFFrame* fh)
 //            << fh->delta_prior.transpose() << std::endl;
 #ifdef NEW_METHOD
     if (fh->prior(0) > 1.0) {
-        //! 修改JM, rM
+//        Vec8 priorF;
+//        for (int i = 0; i < 8; i++)
+//            priorF = sqrt(fh->prior(i));
+        //! 在JM, rM的idx所在的8列下增加Lambda  Lambda * alpha如下
+        //! JM              rM                   ==        JM'       rM'
+        //! Lambda          Lambda * alpha
+        //!  JM'.transpose * JM' = JM.transpose * JM + Lambda^2
+        //!  JM'.transpose * rM' = JM.transpose * rM + Lambda * (Lambda * alpha)
+        //! Lambda^2即prior.asDiagonal()， alpha即delta_prior
         std::cout << "marg frame: " << fh->idx << std::endl;
         std::cout << "fh->prior fh->delta_prior:\n" << fh->prior.transpose() << "\n"
                 << fh->delta_prior.transpose() << std::endl;
