@@ -128,9 +128,9 @@ public:
 
 	EFPointStatus stateFlag;
 
-        MatXXf Jr1;
-        VecXf Jr2;
-        VecXf Jl;
+        MatXXc Jr1;
+        VecXc Jr2;
+        VecXc Jl;
 };
 
 class EFFrame {

@@ -123,7 +123,8 @@ namespace dso {
             }
         }
     }
-    void EnergyFunctional::qr3(MatXXc &Jp, MatXXc &Jl, VecXc &Jr) {
+    void EnergyFunctional::qr3(MatXXc &Jp, VecXc &Jl, VecXc &Jr)
+    {
         MatXXc temp1, temp2;
         rkf_scalar temp3;
         int nres = Jl.rows();

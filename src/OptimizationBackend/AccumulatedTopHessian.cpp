@@ -59,9 +59,9 @@ namespace dso
     void AccumulatedTopHessianSSE::addPoint(MatXXf &H1, VecXf &b1,
                                             EFPoint* p, EnergyFunctional const * const ef, int tid)	// 0 = active, 1 = linearized, 2=marginalize
     {
-        p->Jr1 = MatXXf::Zero(8 * FRAMES, CPARS + 8 * FRAMES);
-        p->Jr2 = VecXf::Zero(8 * FRAMES);;
-        p->Jl  = VecXf::Zero(8 * FRAMES);
+        p->Jr1 = MatXXc::Zero(8 * FRAMES, CPARS + 8 * FRAMES);
+        p->Jr2 = VecXc::Zero(8 * FRAMES);;
+        p->Jl  = VecXc::Zero(8 * FRAMES);
 
         assert(mode==0 || mode==2);
 
@@ -213,37 +213,32 @@ namespace dso
             p->Jr2[i] = 0.0;
         }
 #endif
-#define NEW_METHOD
-ef->qr2();
+#ifdef NEW_METHOD
+        ef->qr3(p->Jr1, p->Jl, p->Jr2);
+        p->Jr1.row(0).setZero();
+        p->Jr2[0] = 0.0;
 #endif
 
         times_ACC2 += timer_ACC2.toc();
 
-//        std::cout << "Jr1:\n" << Jr1 << std::endl;
-//        std::cout << "Jr2:\n" << Jr2.transpose() << std::endl;
-//        Eigen::SparseMatrix<float> A(8 * k - 1, CPARS + 8 * FRAMES);
-        MatXXf A(8 * k - 1, CPARS + 8 * FRAMES);
-        VecXf x(CPARS + 8 * FRAMES);
-        VecXf b = p->Jr2.segment(1, 8 * k - 1);
-        for (int l = 0; l < 8 * k - 1; l++) {
-//            if (Jr1.row(l) == 0)
-//                std::cout << 0 << std::endl;
-            for (int m = 0; m < CPARS + 8 * FRAMES; m++)
-                A(l, m) = p->Jr1(l + 1, m);
-        }
+        std::cout << "Jr1:\n" << p->Jr1 << std::endl;
+        std::cout << "Jr2:\n" << p->Jr2.transpose() << std::endl;
+//        MatXXf A(8 * k - 1, CPARS + 8 * FRAMES);
+//        VecXf x(CPARS + 8 * FRAMES);
+//        VecXf b = p->Jr2.segment(1, 8 * k - 1);
+//        for (int l = 0; l < 8 * k - 1; l++) {
+//            for (int m = 0; m < CPARS + 8 * FRAMES; m++)
+//                A(l, m) = p->Jr1(l + 1, m);
+//        }
 
 //        std::cout << "A:\n" << A << std::endl;
 //        std::cout << "b:\n" << b.transpose() << std::endl;
 
         timer_ACC5.tic();
-        Eigen::LeastSquaresConjugateGradient<MatXXf > lscg;
-        lscg.compute(A);
-        x = lscg.solve(b);
+//        Eigen::LeastSquaresConjugateGradient<MatXXf > lscg;
+//        lscg.compute(A);
+//        x = lscg.solve(b);
         times_ACC5 += timer_ACC5.toc();
-
-//        std::cout << "#iterations:     " << lscg.iterations() << std::endl;
-//        std::cout << "estimated error: " << lscg.error()      << std::endl;
-//        std::cout << "x: " << x.transpose() << std::endl;
 
 //        timer_ACC3.tic();
 //        MatXXf tempH = (p->Jr1.transpose() * p->Jr1);
@@ -253,8 +248,8 @@ ef->qr2();
 
 //        std::cout << "x2: " << x2.transpose() << std::endl;
 
-        H1 += p->Jr1.transpose() * p->Jr1;
-        b1 += p->Jr1.transpose() * p->Jr2;
+        H1 += (p->Jr1.transpose() * p->Jr1);
+        b1 += (p->Jr1.transpose() * p->Jr2);
         if (mode == 2) {
             //! 将所有的Jr1, Jr2合并入ef->JM, ef->rM
         }
