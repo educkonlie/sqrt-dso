@@ -25,6 +25,8 @@
 #include "OptimizationBackend/AccumulatedTopHessian.h"
 #include "OptimizationBackend/EnergyFunctional.h"
 #include "OptimizationBackend/EnergyFunctionalStructs.h"
+#include "OptimizationBackend/pcg.h"
+#include "OptimizationBackend/qr.h"
 #include <iostream>
 
 #include "FullSystem/HessianBlocks.h"

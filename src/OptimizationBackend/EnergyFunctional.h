@@ -95,9 +95,13 @@ public:
 	MatXX HM;
 	VecX bM;
 #ifdef NEW_METHOD
-    MatXX JM;
-    VecX rM;
-    void qr(MatXX &Jp, MatXX &Jl);
+    MatXXc JM;
+    VecXc rM;
+    void qr(MatXXc &Jp, MatXXc &Jl);
+    void qr2(MatXXc &Jp);
+    void qr3(MatXXc &Jp, MatXXc &Jl, VecXc &Jr);
+    void pcgReductor(VecXc AAq[], MatXXc A[], VecXc &q,
+                     int min, int max, Vec10 *stat, int tid);
 #endif
 
 	int resInA, resInL, resInM;

@@ -28,7 +28,7 @@ include_directories(${Glog_INCLUDE_DIRS})
 # flags
 add_definitions("-DENABLE_SSE")
 set(CMAKE_CXX_FLAGS
-   "${SSE_FLAGS} -O3 -g  -std=c++17 -march=native -fopenmp"
+   "${SSE_FLAGS} -O3 -g  -std=c++17 -march=native"
 #		"${SSE_FLAGS} -O3 -g  -fopenmp -std=c++17 -march=native"
 #		"${SSE_FLAGS} -O3 -g  -std=c++17 -march=native -DEIGEN_DONT_VECTORIZE"
 #   "${SSE_FLAGS} -O3 -g -std=c++0x -fno-omit-frame-pointer"
@@ -40,27 +40,25 @@ endif (MSVC)
 
 # Sources files
 set(dso_SOURCE_FILES
-  ${PROJECT_SOURCE_DIR}/src/FullSystem/FullSystem.cpp
-  ${PROJECT_SOURCE_DIR}/src/FullSystem/FullSystemOptimize.cpp
-  ${PROJECT_SOURCE_DIR}/src/FullSystem/FullSystemOptPoint.cpp
-  ${PROJECT_SOURCE_DIR}/src/FullSystem/FullSystemDebugStuff.cpp
-  ${PROJECT_SOURCE_DIR}/src/FullSystem/FullSystemMarginalize.cpp
-  ${PROJECT_SOURCE_DIR}/src/FullSystem/Residuals.cpp
-  ${PROJECT_SOURCE_DIR}/src/FullSystem/CoarseTracker.cpp
-  ${PROJECT_SOURCE_DIR}/src/FullSystem/CoarseInitializer.cpp
-  ${PROJECT_SOURCE_DIR}/src/FullSystem/ImmaturePoint.cpp
-  ${PROJECT_SOURCE_DIR}/src/FullSystem/HessianBlocks.cpp
-  ${PROJECT_SOURCE_DIR}/src/FullSystem/PixelSelector2.cpp
-  ${PROJECT_SOURCE_DIR}/src/OptimizationBackend/EnergyFunctional.cpp
-  ${PROJECT_SOURCE_DIR}/src/OptimizationBackend/AccumulatedTopHessian.cpp
-  ${PROJECT_SOURCE_DIR}/src/OptimizationBackend/AccumulatedSCHessian.cpp
-  ${PROJECT_SOURCE_DIR}/src/OptimizationBackend/EnergyFunctionalStructs.cpp
-  ${PROJECT_SOURCE_DIR}/src/util/settings.cpp
-  ${PROJECT_SOURCE_DIR}/src/util/Undistort.cpp
-  ${PROJECT_SOURCE_DIR}/src/util/globalCalib.cpp
+		${PROJECT_SOURCE_DIR}/src/FullSystem/FullSystem.cpp
+		${PROJECT_SOURCE_DIR}/src/FullSystem/FullSystemOptimize.cpp
+		${PROJECT_SOURCE_DIR}/src/FullSystem/FullSystemOptPoint.cpp
+		${PROJECT_SOURCE_DIR}/src/FullSystem/FullSystemDebugStuff.cpp
+		${PROJECT_SOURCE_DIR}/src/FullSystem/FullSystemMarginalize.cpp
+		${PROJECT_SOURCE_DIR}/src/FullSystem/Residuals.cpp
+		${PROJECT_SOURCE_DIR}/src/FullSystem/CoarseTracker.cpp
+		${PROJECT_SOURCE_DIR}/src/FullSystem/CoarseInitializer.cpp
+		${PROJECT_SOURCE_DIR}/src/FullSystem/ImmaturePoint.cpp
+		${PROJECT_SOURCE_DIR}/src/FullSystem/HessianBlocks.cpp
+		${PROJECT_SOURCE_DIR}/src/FullSystem/PixelSelector2.cpp
+		${PROJECT_SOURCE_DIR}/src/OptimizationBackend/EnergyFunctional.cpp
+		${PROJECT_SOURCE_DIR}/src/OptimizationBackend/AccumulatedTopHessian.cpp
+		${PROJECT_SOURCE_DIR}/src/OptimizationBackend/AccumulatedSCHessian.cpp
+		${PROJECT_SOURCE_DIR}/src/OptimizationBackend/EnergyFunctionalStructs.cpp
+		${PROJECT_SOURCE_DIR}/src/util/settings.cpp
+		${PROJECT_SOURCE_DIR}/src/util/Undistort.cpp
+		${PROJECT_SOURCE_DIR}/src/util/globalCalib.cpp
 )
-
-
 
 include_directories(
   ${PROJECT_SOURCE_DIR}/src
