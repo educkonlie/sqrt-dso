@@ -249,6 +249,9 @@ namespace dso
 
         H1 += p->Jr1.transpose() * p->Jr1;
         b1 += p->Jr1.transpose() * p->Jr2;
+        if (mode == 2) {
+            //! 将所有的Jr1, Jr2合并入ef->JM, ef->rM
+        }
 
         p->Hdd_accAF = Hdd_acc;
         p->bd_accAF = bd_acc;

@@ -205,10 +205,14 @@ void EnergyFunctional::setDeltaF(CalibHessian* HCalib)
 
         {
 //            TicToc timer_addPoint;
-            for (EFFrame *f: frames)
+            int total_rows = 0;
+            for (EFFrame *f: frames) {
                 for (EFPoint *p: f->points) {
                     accSSE_top_A->addPoint<0>(H1, b1, p, this, 0);
+                    total_rows += p->Jr1.rows();
                 }
+            }
+            std::cout << "addPoint 0: total_rows: " << total_rows << std::endl;
 //            auto times_addPoint = timer_addPoint.toc();
 //            std::cout << "addPoint cost time " << times_addPoint << std::endl;
         }
@@ -456,6 +460,8 @@ void EnergyFunctional::marginalizeFrame(EFFrame* fh)
     //! 逐点相乘，如果是两个向量，结果也为一个等维度向量
     //! 因为这个fh->prior是在对角线上，所以会有这么一个操作
     bM.tail<8>() += fh->prior.cwiseProduct(fh->delta_prior);
+//    assert(fh->prior.asDiagonal() * fh->delta_prior
+//           == fh->prior.cwiseProduct(fh->delta_prior));
     //! 只有DSO碰到的第一帧会有fh->prior，需要特别加成
 //    std::cout << "fh->prior fh->delta_prior:\n" << fh->prior.transpose() << "\n"
 //            << fh->delta_prior.transpose() << std::endl;
@@ -581,11 +587,16 @@ void EnergyFunctional::marginalizePointsF()
 	accSSE_bot->setZero(nFrames);
 	accSSE_top_A->setZero(nFrames);
 
+    int total_rows = 0;
 	for(EFPoint* p : allPointsToMarg) {
         accSSE_top_A->addPoint<2>(M, Mb, p,this);
         //! 这之前要把marg掉的JM, rM提取出来，否则点删掉了就没了
-		removePoint(p);
+//		removePoint(p);
+        total_rows += p->Jr1.rows();
 	}
+    std::cout << "totol_rows: " << total_rows << std::endl;
+    for (EFPoint *p : allPointsToMarg)
+        removePoint(p);
 
 	resInM+= accSSE_top_A->nres[0];
 
