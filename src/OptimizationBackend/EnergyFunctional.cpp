@@ -121,8 +121,8 @@ EnergyFunctional::EnergyFunctional()
 	HM = MatXX::Zero(CPARS,CPARS);
 	bM = VecX::Zero(CPARS);
 #ifdef NEW_METHOD
-    JM = MatXX::Zero(0, CPARS);
-    rM = VecX::Zero(0);
+    JM = MatXXc::Zero(0, CPARS);
+    rM = VecXc::Zero(0);
 #endif
 
 //	accSSE_top_L = new AccumulatedTopHessianSSE();

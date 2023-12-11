@@ -81,7 +81,7 @@ public:
 
 #if 1
 	template<int mode> void addPoint(MatXXf &H1, VecXf &b1,
-                                     EFPoint* p, EnergyFunctional const * const ef, int tid=0);
+                                     EFPoint* p, EnergyFunctional *ef, int tid=0);
 #endif
 	int nframes[NUM_THREADS];
 	EIGEN_ALIGN16 AccumulatorApprox* acc[NUM_THREADS];
