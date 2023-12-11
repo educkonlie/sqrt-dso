@@ -25,8 +25,6 @@
 #include "OptimizationBackend/AccumulatedTopHessian.h"
 #include "OptimizationBackend/EnergyFunctional.h"
 #include "OptimizationBackend/EnergyFunctionalStructs.h"
-#include "OptimizationBackend/pcg.h"
-#include "OptimizationBackend/qr.h"
 #include <iostream>
 
 #include "FullSystem/HessianBlocks.h"
@@ -167,6 +165,7 @@ namespace dso
             }
         }
         timer_ACC2.tic();
+#if 0
         {
             int i = 0;
             float a1;
@@ -213,6 +212,11 @@ namespace dso
             p->Jr1.row(i).setZero();
             p->Jr2[i] = 0.0;
         }
+#endif
+#define NEW_METHOD
+ef->qr2();
+#endif
+
         times_ACC2 += timer_ACC2.toc();
 
 //        std::cout << "Jr1:\n" << Jr1 << std::endl;

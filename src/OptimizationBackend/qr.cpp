@@ -1,5 +1,16 @@
-#pragma once
 #include "util/NumType.h"
+#include "OptimizationBackend/EnergyFunctional.h"
+#include "util/NumType.h"
+#include "util/IndexThreadReduce.h"
+#include "OptimizationBackend/EnergyFunctional.h"
+
+#include "OptimizationBackend/EnergyFunctional.h"
+#include "OptimizationBackend/EnergyFunctionalStructs.h"
+#include "FullSystem/FullSystem.h"
+#include "FullSystem/HessianBlocks.h"
+#include "FullSystem/Residuals.h"
+#include "OptimizationBackend/AccumulatedSCHessian.h"
+#include "OptimizationBackend/AccumulatedTopHessian.h"
 namespace dso {
 //#include "common.h"
 //! 要将三列数据全部QR化，需要第一列，第二列，第三列，依次进行
@@ -14,24 +25,24 @@ namespace dso {
 //  0 0 0
 // Jp 和 Jr合成Jp
 
-    void EnergyFunctional::qr(MatXX &Jp, MatXX &Jl) {
-        MatXX temp1, temp2;
+    void EnergyFunctional::qr(MatXXc &Jp, MatXXc &Jl) {
+        MatXXc temp1, temp2;
         int nres = Jl.rows();
         int cols = Jl.cols();
         assert(nres > 3);
         // i: row
         // j: col
         for (int j = 0; j < cols; j++) {
-            double pivot = Jl(j, j);
+            rkf_scalar pivot = Jl(j, j);
 //        std::cout << "pivot: " << pivot << std::endl;
             for (int i = j + 1; i < nres; i++) {
 #if false
-                double a;
+                rkf_scalar a;
                 while ((a = Jl(i, j)) == 0 && i < nres) {
                     i++;
                 }
 #else
-                double a = Jl(i, j);
+                rkf_scalar a = Jl(i, j);
 #endif
 //            std::cout << "a: " << a << std::endl;
 //            std::cout << "i, j: " << i << " " << j << std::endl;
@@ -44,9 +55,9 @@ namespace dso {
                     assert(false);
                     break;
                 }
-                double r = sqrt(pivot * pivot + a * a);
-                double c = pivot / r;
-                double s = a / r;
+                rkf_scalar r = sqrt(pivot * pivot + a * a);
+                rkf_scalar c = pivot / r;
+                rkf_scalar s = a / r;
                 pivot = r;
 
 // 变0的，先到temp
@@ -65,24 +76,24 @@ namespace dso {
         }
     }
 
-    void EnergyFunctional::qr2(MatXXf &Jl) {
-        MatXXf temp1, temp2;
+    void EnergyFunctional::qr2(MatXXc &Jl) {
+        MatXXc temp1, temp2;
         int nres = Jl.rows();
         int cols = Jl.cols();
         assert(nres > 3);
         // i: row
         // j: col
         for (int j = 0; j < cols; j++) {
-            float pivot = Jl(j, j);
+            rkf_scalar pivot = Jl(j, j);
 //        std::cout << "pivot: " << pivot << std::endl;
             for (int i = j + 1; i < nres; i++) {
 #if false
-                float a;
+                rkf_scalar a;
                 while ((a = Jl(i, j)) == 0 && i < nres) {
                     i++;
                 }
 #else
-                float a = Jl(i, j);
+                rkf_scalar a = Jl(i, j);
 #endif
 //            std::cout << "a: " << a << std::endl;
 //            std::cout << "i, j: " << i << " " << j << std::endl;
@@ -95,9 +106,9 @@ namespace dso {
                     assert(false);
                     break;
                 }
-                float r = sqrt(pivot * pivot + a * a);
-                float c = pivot / r;
-                float s = a / r;
+                rkf_scalar r = sqrt(pivot * pivot + a * a);
+                rkf_scalar c = pivot / r;
+                rkf_scalar s = a / r;
                 pivot = r;
 
 // 变0的，先到temp
@@ -208,7 +219,7 @@ namespace dso {
         J_new.middleCols(CPARS, nframes * 8 - 8) = J.leftCols(nframes * 8 - 8);
     }
 
-//!
+#if 0
     void EnergyFunctional::no_marg_frame(MatXXc &J, VecXc &r, MatXXc &J_new, VecXc &r_new, int nframes)
     {
         MatXXc Jr = MatXXc::Zero(J.rows(), J.cols() + 1);
@@ -234,6 +245,7 @@ namespace dso {
         J_new.leftCols(CPARS) = J.middleCols(nframes * 8, CPARS);
         J_new.middleCols(CPARS, nframes * 8) = J.leftCols(nframes * 8);
     }
+#endif
 
     void EnergyFunctional::add_lambda_frame(MatXXc &J, VecXc &r, int idx, Vec8c Lambda, Vec8c alpha)
     {
@@ -248,7 +260,7 @@ namespace dso {
         J.block(old_rows, CPARS + idx * 8, 8, 8) = Lambda.asDiagonal();
         r.bottomRows(8) = Lambda.asDiagonal() * alpha;
     }
-
+#if 0
     void EnergyFunctional::test_marg_frame() {
         int num_of_frames = 25;
         int idx = 2;
@@ -276,6 +288,7 @@ namespace dso {
         std::cout << "J.cols(): " << J_new.cols() << std::endl;
         std::cout << "r.rows(): " << r_new.rows() << std::endl;
     }
+#endif
 
     void EnergyFunctional::test_qr()
     {

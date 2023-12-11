@@ -1,7 +1,15 @@
-#pragma once
 #include "util/NumType.h"
 #include "util/IndexThreadReduce.h"
 #include "OptimizationBackend/EnergyFunctional.h"
+
+#include "OptimizationBackend/EnergyFunctional.h"
+#include "OptimizationBackend/EnergyFunctionalStructs.h"
+#include "FullSystem/FullSystem.h"
+#include "FullSystem/HessianBlocks.h"
+#include "FullSystem/Residuals.h"
+#include "OptimizationBackend/AccumulatedSCHessian.h"
+#include "OptimizationBackend/AccumulatedTopHessian.h"
+
 namespace dso {
 
         void EnergyFunctional::pcgReductor(VecXc AAq[], MatXXc A[], VecXc &q,

@@ -97,11 +97,23 @@ public:
 #ifdef NEW_METHOD
     MatXXc JM;
     VecXc rM;
+
     void qr(MatXXc &Jp, MatXXc &Jl);
     void qr2(MatXXc &Jp);
     void qr3(MatXXc &Jp, MatXXc &Jl, VecXc &Jr);
+    void test_qr();
+
     void pcgReductor(VecXc AAq[], MatXXc A[], VecXc &q,
                      int min, int max, Vec10 *stat, int tid);
+    void pcgMT(IndexThreadReduce<Vec10> *red, MatXXc A[], VecXc b[],
+               EnergyFunctional const * const EF,
+               int num_of_A, VecXc &x,
+               rkf_scalar tor, int maxiter, bool MT);
+
+    void marg_frame(MatXXc &J, VecXc &r, MatXXc &J_new, VecXc &r_new,
+                    int nframes, int idx);
+    void add_lambda_frame(MatXXc &J, VecXc &r, int idx, Vec8c Lambda, Vec8c alpha);
+
 #endif
 
 	int resInA, resInL, resInM;
