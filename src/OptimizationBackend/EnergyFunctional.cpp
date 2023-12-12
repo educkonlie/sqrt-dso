@@ -595,8 +595,8 @@ void EnergyFunctional::marginalizePointsF()
         total_rows += p->Jr1.rows();
 	}
     std::cout << "totol_rows: " << total_rows << std::endl;
-    if (rM.rows() > 10)
-        std::cout << "rM      1:\n" << rM.topRows(10).transpose() << std::endl;
+//    if (rM.rows() > 10)
+//        std::cout << "rM      1:\n" << rM.topRows(10).transpose() << std::endl;
     int m = JM.rows();
     JM.conservativeResize(m + total_rows, JM.cols());
     rM.conservativeResize(m + total_rows);
@@ -612,7 +612,7 @@ void EnergyFunctional::marginalizePointsF()
         removePoint(p);
     }
 
-    std::cout << "JM^T * rM:\n" << (JM.transpose() * rM).transpose() << std::endl;
+//    std::cout << "JM^T * rM:\n" << (JM.transpose() * rM).transpose() << std::endl;
 
     compress_Jr(JM, rM);
 
@@ -622,6 +622,7 @@ void EnergyFunctional::marginalizePointsF()
 //    if (rM.rows() > 10)
 //        std::cout << "rM       :\n" << rM.topRows(10).transpose() << std::endl;
 
+    std::cout << (JM.transpose() * JM).ldlt().solve(JM.transpose() * rM).transpose() << std::endl;
 
 	resInM+= accSSE_top_A->nres[0];
 
@@ -635,6 +636,7 @@ void EnergyFunctional::marginalizePointsF()
     if (bM.rows() > 10)
         std::cout << "bM       :\n" << bM.topRows(10).transpose() << std::endl;
 //    std::cout << "bM size in marg points: " << bM.size() << std::endl;
+    std::cout << HM.ldlt().solve(bM).transpose() << std::endl;
 
 	EFIndicesValid = false;
 	makeIDX();
