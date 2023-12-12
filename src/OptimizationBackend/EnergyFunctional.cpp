@@ -600,17 +600,17 @@ void EnergyFunctional::marginalizePointsF()
     int m = JM.rows();
     JM.conservativeResize(m + total_rows, JM.cols());
     rM.conservativeResize(m + total_rows);
-    int k = m;
+    JM.bottomRows(total_rows).setZero();
+    rM.bottomRows(total_rows).setZero();
     for (EFPoint *p : allPointsToMarg) {
-        JM.middleRows(k, p->Jr1.rows()) = p->Jr1;
-        rM.middleRows(k, p->Jr2.rows()) = p->Jr2;
-        k += p->Jr2.rows();
+        JM.middleRows(m, p->Jr1.rows()) = p->Jr1;
+        rM.middleRows(m, p->Jr2.rows()) = p->Jr2;
+        m += p->Jr2.rows();
 //        removePoint(p);
     }
     for (EFPoint *p : allPointsToMarg) {
         removePoint(p);
     }
-    assert(rM.rows() == m + total_rows);
 
     std::cout << "JM^T * rM:\n" << (JM.transpose() * rM).transpose() << std::endl;
 
