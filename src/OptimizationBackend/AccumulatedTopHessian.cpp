@@ -59,9 +59,9 @@ namespace dso
     void AccumulatedTopHessianSSE::addPoint(MatXXf &H1, VecXf &b1,
                                             EFPoint* p, EnergyFunctional *ef, int tid)	// 0 = active, 1 = linearized, 2=marginalize
     {
-        p->Jr1 = MatXXc::Zero(8 * FRAMES, CPARS + 8 * FRAMES);
-        p->Jr2 = VecXc::Zero(8 * FRAMES);;
-        p->Jl  = VecXc::Zero(8 * FRAMES);
+        MatXXc Jr1 = MatXXc::Zero(8 * FRAMES, CPARS + 8 * FRAMES);
+        VecXc Jr2 = VecXc::Zero(8 * FRAMES);;
+        VecXc Jl  = VecXc::Zero(8 * FRAMES);
 
         assert(mode==0 || mode==2);
 
@@ -133,17 +133,17 @@ namespace dso
             J_th.block<8, 1>(0, 10) = rJ->JabF[0];
             J_th.block<8, 1>(0, 11) = rJ->JabF[1];
 //            J_th.block<8, 1>(0, 12) = resApprox;
-            p->Jr2.segment(8 * k, 8) += resApprox;
+            Jr2.segment(8 * k, 8) += resApprox;
 #endif
 
-            p->Jr1.block(8 * k, 0, 8, 4)
+            Jr1.block(8 * k, 0, 8, 4)
                     = J_th.block(0, 0, 8, 4);
-            p->Jr1.block(8 * k, r->hostIDX * 8 + 4, 8, 8)
+            Jr1.block(8 * k, r->hostIDX * 8 + 4, 8, 8)
                     = J_th.block(0, 4, 8, 8) * ef->adHostF[htIDX].transpose();
-            p->Jr1.block(8 * k, r->targetIDX * 8 + 4, 8, 8)
+            Jr1.block(8 * k, r->targetIDX * 8 + 4, 8, 8)
                     = J_th.block(0, 4, 8, 8) * ef->adTargetF[htIDX].transpose();
 
-            p->Jl.segment(8 * k, 8)
+            Jl.segment(8 * k, 8)
                     = rJ->JIdx[0] * rJ->Jpdd(0, 0) + rJ->JIdx[1] * rJ->Jpdd(1, 0);
 
             //! 打印host, target, C, xi, ab
@@ -165,23 +165,26 @@ namespace dso
             }
         }
         timer_ACC2.tic();
+        MatXXc Tp = p->Jr1;
+        VecXc Tl = p->Jl;
+        VecXc Tr = p->Jr2;
 #if 1
-        {
+        {  // qr
             int i = 0;
             float a1;
             MatXXf temp1 = MatXXf::Zero(1, CPARS + 8 * FRAMES);
             float temp2 = 0.0;
-            while ((a1 = p->Jl[i]) == 0 && i < 8 * k) {
-                i++;
-            }
+//            while ((a1 = p->Jl[i]) == 0 && i < 8 * k) {
+//                i++;
+//            }
             if (i < 8 * k && k > 0) {
                 int j = i + 1;
                 while (j < 8 * k) {
-                    if (p->Jl[j] == 0) {
+                    if (Jl[j] == 0) {
                         j++;
                         continue;
                     }
-                    float a2 = p->Jl[j];
+                    float a2 = Jl[j];
                     float r = sqrt(a1 * a1 + a2 * a2);
                     if (r == 0) {
                         std::cout << "r == 0, it's impossible" << std::endl;
@@ -190,18 +193,18 @@ namespace dso
                     }
                     float c = a1 / r;
                     float s = a2 / r;
-                    a1 = p->Jl[i] = r;
+                    a1 = Jl[i] = r;
 
                     // 变0的，先到temp
-                    temp1 = -s * p->Jr1.row(i) + c * p->Jr1.row(j);
-                    temp2 = -s * p->Jr2[i] + c * p->Jr2[j];
+                    temp1 = -s * Jr1.row(i) + c * Jr1.row(j);
+                    temp2 = -s * Jr2[i] + c * Jr2[j];
                     // 变大的
-                    p->Jr1.row(i) = c * p->Jr1.row(i) + s * p->Jr1.row(j);
-                    p->Jr2[i] = c * p->Jr2[i] + s * p->Jr2[j];
+                    Jr1.row(i) = c * Jr1.row(i) + s * Jr1.row(j);
+                    Jr2[i] = c * Jr2[i] + s * Jr2[j];
                     // 变0的, temp => j
-                    p->Jr1.row(j) = temp1;
-                    p->Jr2[j] = temp2;
-                    p->Jl[j] = 0;
+                    Jr1.row(j) = temp1;
+                    Jr2[j] = temp2;
+                    Jl[j] = 0;
                     ++j;
                 }
             } else {
@@ -209,20 +212,29 @@ namespace dso
             }
             //! 一个是2 + 4 + 4 + 4 + ... = 2 + 4 * k = o(k)，再乘以列数
             //! 一个是2 + 3 + 4 + 5 + ... + k = o(k^2)， 再乘以列数
-            p->Jr1.row(i).setZero();
-            p->Jr2[i] = 0.0;
+            Jr1.row(i).setZero();
+            Jr2[i] = 0.0;
         }
 #endif
-//#ifdef NEW_METHOD
-//        ef->qr3(p->Jr1, p->Jl, p->Jr2);
-//        p->Jr1.row(0).setZero();
-//        p->Jr2[0] = 0.0;
-//#endif
-
         times_ACC2 += timer_ACC2.toc();
 
-        std::cout << "Jr1:\n" << p->Jr1 << std::endl;
-        std::cout << "Jr2:\n" << p->Jr2.transpose() << std::endl;
+//        std::cout << "Jr1:\n" << p->Jr1 << std::endl;
+//        std::cout << "Jr2:\n" << p->Jr2.transpose() << std::endl;
+//        std::cout << "Jl: \n" << p->Jl.transpose() << std::endl;
+
+//        MatXXf A(8 * k - 1, CPARS + 8 * FRAMES) = p->Jr1.bottom;
+        p->Jr1 = Jr1.middleRows(1, 8 * k - 1);
+//        VecXf x(CPARS + 8 * FRAMES);
+        p->Jr2 = Jr2.segment(1, 8 * k - 1);
+
+        assert(p->Jr1.rows() == 8 * k - 1);
+//        for (int l = 0; l < 8 * k - 1; l++) {
+//            for (int m = 0; m < CPARS + 8 * FRAMES; m++)
+//                A(l, m) = p->Jr1(l + 1, m);
+//        }
+
+//        std::cout << "A:\n" << A << std::endl;
+//        std::cout << "b:\n" << b.transpose() << std::endl;
 
         H1 += (p->Jr1.transpose() * p->Jr1);
         b1 += (p->Jr1.transpose() * p->Jr2);

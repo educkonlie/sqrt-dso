@@ -112,6 +112,7 @@ public:
 
     void marg_frame(MatXXc &J, VecXc &r, MatXXc &J_new, VecXc &r_new,
                     int nframes, int idx);
+    void no_marg_frame(MatXXc &J, VecXc &r, MatXXc &J_new, VecXc &r_new, int nframes);
     void add_lambda_frame(MatXXc &J, VecXc &r, int idx, Vec8c Lambda, Vec8c alpha);
 
 #endif

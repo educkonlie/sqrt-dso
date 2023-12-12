@@ -123,61 +123,6 @@ namespace dso {
             }
         }
     }
-    void EnergyFunctional::qr3(MatXXc &Jp, VecXc &Jl, VecXc &Jr)
-    {
-        MatXXc temp1, temp2;
-        rkf_scalar temp3;
-        int nres = Jl.rows();
-        int cols = Jl.cols();
-        assert(nres > 3);
-        // i: row
-        // j: col
-        for (int j = 0; j < cols; j++) {
-            rkf_scalar pivot = Jl(j, j);
-//        std::cout << "pivot: " << pivot << std::endl;
-            for (int i = j + 1; i < nres; i++) {
-#if false
-                rkf_scalar a;
-                while ((a = Jl(i, j)) == 0 && i < nres) {
-                    i++;
-                }
-#else
-                rkf_scalar a = Jl(i, j);
-#endif
-//            std::cout << "a: " << a << std::endl;
-//            std::cout << "i, j: " << i << " " << j << std::endl;
-                if (i == nres) {
-//                assert(std::abs(pivot) > 0.0000001);
-                    if (pivot == 0.0)
-                        pivot = 0.000001;
-                    Jl(j, j) = pivot;
-                    std::cout << "......pivot...." << pivot << std::endl;
-                    assert(false);
-                    break;
-                }
-                rkf_scalar r = sqrt(pivot * pivot + a * a);
-                rkf_scalar c = pivot / r;
-                rkf_scalar s = a / r;
-                pivot = r;
-
-// 变0的，先到temp
-                temp1 = -s * Jl.row(j) + c * Jl.row(i);
-                temp2 = -s * Jp.row(j) + c * Jp.row(i);
-                temp3 = -s * Jr[j] + c * Jr[i];
-// 变大的.  j是pivot，在上面，i在下面
-                Jl.row(j) = c * Jl.row(j) + s * Jl.row(i);
-                Jp.row(j) = c * Jp.row(j) + s * Jp.row(i);
-                Jr[j] = c * Jr[j] + s * Jr[i];
-// 变0的, temp => i
-                Jl.row(i) = temp1;
-                Jp.row(i) = temp2;
-                Jr[i] = temp3;
-
-                Jl(j, j) = pivot = r;
-                Jl(i, j) = 0;
-            }
-        }
-    }
 // struct of JM rM
 //  JM_marg   JM_remained   JM_CPARS  rM
 // 然后将上面整体进行QR分解，rM会比JM多一行非零，但这个是正常现象
@@ -220,7 +165,6 @@ namespace dso {
         J_new.middleCols(CPARS, nframes * 8 - 8) = J.leftCols(nframes * 8 - 8);
     }
 
-#if 0
     void EnergyFunctional::no_marg_frame(MatXXc &J, VecXc &r, MatXXc &J_new, VecXc &r_new, int nframes)
     {
         MatXXc Jr = MatXXc::Zero(J.rows(), J.cols() + 1);
@@ -246,7 +190,6 @@ namespace dso {
         J_new.leftCols(CPARS) = J.middleCols(nframes * 8, CPARS);
         J_new.middleCols(CPARS, nframes * 8) = J.leftCols(nframes * 8);
     }
-#endif
 
     void EnergyFunctional::add_lambda_frame(MatXXc &J, VecXc &r, int idx, Vec8c Lambda, Vec8c alpha)
     {
