@@ -190,6 +190,25 @@ namespace dso {
         J_new.leftCols(CPARS) = J.middleCols(nframes * 8, CPARS);
         J_new.middleCols(CPARS, nframes * 8) = J.leftCols(nframes * 8);
     }
+    void EnergyFunctional::compress_Jr(MatXXc &J, VecXc &r)
+    {
+        if (J.rows() < 4 * J.cols())
+            return;
+        MatXXc Jr = MatXXc::Zero(J.rows(), J.cols() + 1);
+        //! 组Jr
+        Jr.leftCols(J.cols()) = J;
+        Jr.rightCols(1) = r;
+
+        //! qr分解，以及化简，即删除多余的零行
+        qr2(Jr);
+        Jr.conservativeResize(Jr.cols(), Jr.cols());
+//    MatXX temp = Jr.topRows(Jr.cols());
+//    Jr = temp;
+
+        //! 将化简后的Jr分为J, r
+        J = Jr.leftCols(Jr.cols() - 1);
+        r = Jr.rightCols(1);
+    }
 
     void EnergyFunctional::add_lambda_frame(MatXXc &J, VecXc &r, int idx, Vec8c Lambda, Vec8c alpha)
     {

@@ -26,6 +26,7 @@ namespace dso {
 //    std::cout << AAq[tid].transpose() << std::endl;
         }
 
+        //! A[]里可以存放指针，每个指针都是一个矩阵的地址
         void EnergyFunctional::pcgMT(IndexThreadReduce<Vec10> *red, MatXXc A[], VecXc b[],
                                      EnergyFunctional const * const EF,
                                      int num_of_A, VecXc &x,

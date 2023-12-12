@@ -59,9 +59,9 @@ namespace dso
     void AccumulatedTopHessianSSE::addPoint(MatXXf &H1, VecXf &b1,
                                             EFPoint* p, EnergyFunctional *ef, int tid)	// 0 = active, 1 = linearized, 2=marginalize
     {
-        MatXXc Jr1 = MatXXc::Zero(8 * FRAMES, CPARS + 8 * FRAMES);
-        VecXc Jr2 = VecXc::Zero(8 * FRAMES);;
-        VecXc Jl  = VecXc::Zero(8 * FRAMES);
+        MatXXf Jr1 = MatXXf::Zero(8 * FRAMES, CPARS + 8 * FRAMES);
+        VecXf Jr2 = VecXf::Zero(8 * FRAMES);;
+        VecXf Jl  = VecXf::Zero(8 * FRAMES);
 
         assert(mode==0 || mode==2);
 
@@ -165,9 +165,9 @@ namespace dso
             }
         }
         timer_ACC2.tic();
-        MatXXc Tp = p->Jr1;
-        VecXc Tl = p->Jl;
-        VecXc Tr = p->Jr2;
+//        MatXXc Tp = p->Jr1;
+//        VecXc Tl = p->Jl;
+//        VecXc Tr = p->Jr2;
 #if 1
         {  // qr
             int i = 0;
@@ -223,9 +223,9 @@ namespace dso
 //        std::cout << "Jl: \n" << p->Jl.transpose() << std::endl;
 
 //        MatXXf A(8 * k - 1, CPARS + 8 * FRAMES) = p->Jr1.bottom;
-        p->Jr1 = Jr1.middleRows(1, 8 * k - 1);
+        p->Jr1 = Jr1.middleRows(1, 8 * k - 1).cast<rkf_scalar>();
 //        VecXf x(CPARS + 8 * FRAMES);
-        p->Jr2 = Jr2.segment(1, 8 * k - 1);
+        p->Jr2 = Jr2.segment(1, 8 * k - 1).cast<rkf_scalar>();
 
         assert(p->Jr1.rows() == 8 * k - 1);
 //        for (int l = 0; l < 8 * k - 1; l++) {
@@ -236,8 +236,10 @@ namespace dso
 //        std::cout << "A:\n" << A << std::endl;
 //        std::cout << "b:\n" << b.transpose() << std::endl;
 
-        H1 += (p->Jr1.transpose() * p->Jr1);
-        b1 += (p->Jr1.transpose() * p->Jr2);
+//        H1 += (p->Jr1.transpose() * p->Jr1);
+        H1 += (Jr1.transpose() * Jr1);
+//        b1 += (p->Jr1.transpose() * p->Jr2);
+        b1 += (Jr1.transpose() * Jr2);
         if (mode == 2) {
             //! 将所有的Jr1, Jr2合并入ef->JM, ef->rM
         }

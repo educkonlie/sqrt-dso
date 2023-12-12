@@ -595,8 +595,18 @@ void EnergyFunctional::marginalizePointsF()
         total_rows += p->Jr1.rows();
 	}
     std::cout << "totol_rows: " << total_rows << std::endl;
-    for (EFPoint *p : allPointsToMarg)
+    int m = JM.rows();
+    JM.conservativeResize(m + total_rows, JM.cols());
+    rM.conservativeResize(m + total_rows);
+    for (EFPoint *p : allPointsToMarg) {
+        JM.middleRows(m, p->Jr1.rows()) = p->Jr1;
+        rM.middleRows(m, p->Jr2.rows()) = p->Jr2;
         removePoint(p);
+    }
+
+    compress_Jr(JM, rM);
+
+    std::cout << "JM size: " << JM.rows() << " " << JM.cols() << std::endl;
 
 	resInM+= accSSE_top_A->nres[0];
 
