@@ -56,7 +56,7 @@ namespace dso
     double times_ACC5 = 0.0;
 
     template<int mode>
-    void AccumulatedTopHessianSSE::addPoint(MatXXf &H1, VecXf &b1,
+    void AccumulatedTopHessianSSE::addPoint(MatXXc &H1, VecXc &b1,
                                             EFPoint* p, EnergyFunctional *ef, int tid)	// 0 = active, 1 = linearized, 2=marginalize
     {
         MatXXf Jr1 = MatXXf::Zero(8 * FRAMES, CPARS + 8 * FRAMES);
@@ -76,7 +76,6 @@ namespace dso
 
         int ngoodres = 0;
         std::vector<int > target_id;
-//        int hid;
 
         for(EFResidual* r : p->residualsAll) {
             if(mode==0) {
@@ -91,7 +90,6 @@ namespace dso
 
             RawResidualJacobian* rJ = r->J;
             int htIDX = r->hostIDX + r->targetIDX*nframes[tid];
-//            hid = r->hostIDX;
             target_id.push_back(r->targetIDX);
 
             Mat18f dp = ef->adHTdeltaF[htIDX];
@@ -117,11 +115,6 @@ namespace dso
             bd_acc +=  JI_r[0]*rJ->Jpdd[0] + JI_r[1]*rJ->Jpdd[1];
             Hdd_acc += Ji2_Jpdd.dot(rJ->Jpdd);
             Hcd_acc += rJ->Jpdc[0]*Ji2_Jpdd[0] + rJ->Jpdc[1]*Ji2_Jpdd[1];
-//            if (r->data->stereoResidualFlag) {
-//                for (int l = 0; l < 8; l++)
-//                    Jl[0] += resApprox[l];
-//                continue;
-//            }
 #ifdef USE_MYH
             timer_ACC1.tic();
             //! 上面的是重投影误差的偏导，另外还要有8×2的矩阵JIdx，即8维的residual和x, y的偏导
@@ -132,7 +125,6 @@ namespace dso
                                      rJ->JIdx[1] * rJ->Jpdxi[1].transpose();
             J_th.block<8, 1>(0, 10) = rJ->JabF[0];
             J_th.block<8, 1>(0, 11) = rJ->JabF[1];
-//            J_th.block<8, 1>(0, 12) = resApprox;
             Jr2.segment(8 * k, 8) += resApprox;
 #endif
 
@@ -165,10 +157,7 @@ namespace dso
             }
         }
         timer_ACC2.tic();
-//        MatXXc Tp = p->Jr1;
-//        VecXc Tl = p->Jl;
-//        VecXc Tr = p->Jr2;
-#if 1
+#if 0
         {  // qr
             int i = 0;
             float a1;
@@ -215,31 +204,22 @@ namespace dso
             Jr1.row(i).setZero();
             Jr2[i] = 0.0;
         }
+#else
+        ef->qr3f(Jr1, Jl, Jr2);
+        Jr1.row(0).setZero();
+        Jr2[0] = 0.0;
 #endif
         times_ACC2 += timer_ACC2.toc();
 
-//        std::cout << "Jr1:\n" << p->Jr1 << std::endl;
-//        std::cout << "Jr2:\n" << p->Jr2.transpose() << std::endl;
-//        std::cout << "Jl: \n" << p->Jl.transpose() << std::endl;
-
-//        MatXXf A(8 * k - 1, CPARS + 8 * FRAMES) = p->Jr1.bottom;
         p->Jr1 = Jr1.middleRows(1, 8 * k - 1).cast<rkf_scalar>();
-//        VecXf x(CPARS + 8 * FRAMES);
         p->Jr2 = Jr2.segment(1, 8 * k - 1).cast<rkf_scalar>();
 
         assert(p->Jr1.rows() == 8 * k - 1);
-//        for (int l = 0; l < 8 * k - 1; l++) {
-//            for (int m = 0; m < CPARS + 8 * FRAMES; m++)
-//                A(l, m) = p->Jr1(l + 1, m);
-//        }
 
-//        std::cout << "A:\n" << A << std::endl;
-//        std::cout << "b:\n" << b.transpose() << std::endl;
-
-//        H1 += (p->Jr1.transpose() * p->Jr1);
-        H1 += (Jr1.transpose() * Jr1);
-//        b1 += (p->Jr1.transpose() * p->Jr2);
-        b1 += (Jr1.transpose() * Jr2);
+        H1 += (p->Jr1.transpose() * p->Jr1);
+//        H1 += (Jr1.transpose() * Jr1);
+        b1 += (p->Jr1.transpose() * p->Jr2);
+//        b1 += (Jr1.transpose() * Jr2);
         if (mode == 2) {
             //! 将所有的Jr1, Jr2合并入ef->JM, ef->rM
         }
@@ -505,11 +485,11 @@ namespace dso
 #endif
 
     template void AccumulatedTopHessianSSE::addPoint<0>
-            (MatXXf &H1, VecXf &b1,
+            (MatXXc &H1, VecXc &b1,
              EFPoint* p, EnergyFunctional  *ef, int tid);
 //template void AccumulatedTopHessianSSE::addPoint<1>(EFPoint* p, EnergyFunctional const * const ef, int tid);
     template void AccumulatedTopHessianSSE::addPoint<2>
-            (MatXXf &H1, VecXf &b1,
+            (MatXXc &H1, VecXc &b1,
              EFPoint* p, EnergyFunctional  *ef, int tid);
 
 void AccumulatedTopHessianSSE::stitchDouble(MatXX &H, VecX &b, EnergyFunctional const * const EF, bool usePrior, bool useDelta, int tid)

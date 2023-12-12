@@ -200,8 +200,8 @@ void EnergyFunctional::setDeltaF(CalibHessian* HCalib)
         H = MatXX::Zero(accSSE_top_A->nframes[0]*8+CPARS, accSSE_top_A->nframes[0]*8+CPARS);
         b = VecX::Zero(accSSE_top_A->nframes[0] * 8+CPARS);
 
-        MatXXf H1 = MatXXf::Zero(accSSE_top_A->nframes[0]*8+CPARS, accSSE_top_A->nframes[0]*8+CPARS);
-        VecXf b1 = VecXf::Zero(accSSE_top_A->nframes[0] * 8+CPARS);
+        MatXXc H1 = MatXXc::Zero(accSSE_top_A->nframes[0]*8+CPARS, accSSE_top_A->nframes[0]*8+CPARS);
+        VecXc b1 = VecXc::Zero(accSSE_top_A->nframes[0] * 8+CPARS);
 
         {
 //            TicToc timer_addPoint;
@@ -577,8 +577,8 @@ void EnergyFunctional::marginalizePointsF()
 	}
 //    std::cout << "allPointsToMarg.size(): " << allPointsToMarg.size() << std::endl;
 
-    MatXXf M = MatXXf::Zero(accSSE_top_A->nframes[0]*8+CPARS, accSSE_top_A->nframes[0]*8+CPARS);
-    VecXf Mb = VecXf::Zero(accSSE_top_A->nframes[0] * 8+CPARS);
+    MatXXc M = MatXXc::Zero(accSSE_top_A->nframes[0]*8+CPARS, accSSE_top_A->nframes[0]*8+CPARS);
+    VecXc Mb = VecXc::Zero(accSSE_top_A->nframes[0] * 8+CPARS);
 #ifdef NEW_METHOD
 #endif
 
@@ -595,18 +595,33 @@ void EnergyFunctional::marginalizePointsF()
         total_rows += p->Jr1.rows();
 	}
     std::cout << "totol_rows: " << total_rows << std::endl;
+    if (rM.rows() > 10)
+        std::cout << "rM      1:\n" << rM.topRows(10).transpose() << std::endl;
     int m = JM.rows();
     JM.conservativeResize(m + total_rows, JM.cols());
     rM.conservativeResize(m + total_rows);
+    int k = m;
     for (EFPoint *p : allPointsToMarg) {
-        JM.middleRows(m, p->Jr1.rows()) = p->Jr1;
-        rM.middleRows(m, p->Jr2.rows()) = p->Jr2;
+        JM.middleRows(k, p->Jr1.rows()) = p->Jr1;
+        rM.middleRows(k, p->Jr2.rows()) = p->Jr2;
+        k += p->Jr2.rows();
+//        removePoint(p);
+    }
+    for (EFPoint *p : allPointsToMarg) {
         removePoint(p);
     }
+    assert(rM.rows() == m + total_rows);
+
+    std::cout << "JM^T * rM:\n" << (JM.transpose() * rM).transpose() << std::endl;
 
     compress_Jr(JM, rM);
 
     std::cout << "JM size: " << JM.rows() << " " << JM.cols() << std::endl;
+    std::cout << "JM^T * rM:\n" << (JM.transpose() * rM).transpose() << std::endl;
+//    std::cout << "JM       :\n" << JM_new << std::endl;
+//    if (rM.rows() > 10)
+//        std::cout << "rM       :\n" << rM.topRows(10).transpose() << std::endl;
+
 
 	resInM+= accSSE_top_A->nres[0];
 
@@ -617,6 +632,8 @@ void EnergyFunctional::marginalizePointsF()
 	HM += setting_margWeightFac*H;
 	bM += setting_margWeightFac*b;
 
+    if (bM.rows() > 10)
+        std::cout << "bM       :\n" << bM.topRows(10).transpose() << std::endl;
 //    std::cout << "bM size in marg points: " << bM.size() << std::endl;
 
 	EFIndicesValid = false;

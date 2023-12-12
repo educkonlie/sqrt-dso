@@ -101,6 +101,7 @@ public:
     void qr(MatXXc &Jp, MatXXc &Jl);
     void qr2(MatXXc &Jp);
     void qr3(MatXXc &Jp, VecXc &Jl, VecXc &Jr);
+    void qr3f(MatXXf &Jp, VecXf &Jl, VecXf &Jr);
     void test_qr();
 
     void pcgReductor(VecXc AAq[], MatXXc A[], VecXc &q,

@@ -80,7 +80,7 @@ public:
                       bool usePrior, bool useDelta, int tid=0);
 
 #if 1
-	template<int mode> void addPoint(MatXXf &H1, VecXf &b1,
+	template<int mode> void addPoint(MatXXc &H1, VecXc &b1,
                                      EFPoint* p, EnergyFunctional *ef, int tid=0);
 #endif
 	int nframes[NUM_THREADS];

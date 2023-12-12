@@ -34,32 +34,14 @@ namespace dso {
         // j: col
         for (int j = 0; j < cols; j++) {
             rkf_scalar pivot = Jl(j, j);
-//        std::cout << "pivot: " << pivot << std::endl;
             for (int i = j + 1; i < nres; i++) {
-#if false
-                rkf_scalar a;
-                while ((a = Jl(i, j)) == 0 && i < nres) {
-                    i++;
-                }
-#else
+                if (Jl(i, j) < 1e-10)
+                    continue;
                 rkf_scalar a = Jl(i, j);
-#endif
-//            std::cout << "a: " << a << std::endl;
-//            std::cout << "i, j: " << i << " " << j << std::endl;
-                if (i == nres) {
-//                assert(std::abs(pivot) > 0.0000001);
-                    if (pivot == 0.0)
-                        pivot = 0.000001;
-                    Jl(j, j) = pivot;
-                    std::cout << "......pivot...." << pivot << std::endl;
-                    assert(false);
-                    break;
-                }
                 rkf_scalar r = sqrt(pivot * pivot + a * a);
                 rkf_scalar c = pivot / r;
                 rkf_scalar s = a / r;
                 pivot = r;
-
 // 变0的，先到temp
                 temp1 = -s * Jl.row(j) + c * Jl.row(i);
                 temp2 = -s * Jp.row(j) + c * Jp.row(i);
@@ -75,7 +57,78 @@ namespace dso {
             }
         }
     }
+    void EnergyFunctional::qr3(MatXXc &Jp, VecXc &Jl, VecXc &Jr) {
+        MatXXc temp1;
+        VecXc temp2, temp3;
+        int nres = Jl.rows();
+        int cols = Jl.cols();
+        assert(nres > 3);
+        // i: row
+        // j: col
+        for (int j = 0; j < cols; j++) {
+            rkf_scalar pivot = Jl(j, j);
+            for (int i = j + 1; i < nres; i++) {
+                if (Jl(i, j) < 1e-10)
+                    continue;
+                rkf_scalar a = Jl(i, j);
+                rkf_scalar r = sqrt(pivot * pivot + a * a);
+                rkf_scalar c = pivot / r;
+                rkf_scalar s = a / r;
+                pivot = r;
+// 变0的，先到temp
+                temp2 = -s * Jl.row(j) + c * Jl.row(i);
+                temp1 = -s * Jp.row(j) + c * Jp.row(i);
+                temp3 = -s * Jr.row(j) + c * Jr.row(i);
+// 变大的.  j是pivot，在上面，i在下面
+                Jl.row(j) = c * Jl.row(j) + s * Jl.row(i);
+                Jp.row(j) = c * Jp.row(j) + s * Jp.row(i);
+                Jr.row(j) = c * Jr.row(j) + s * Jr.row(i);
+// 变0的, temp => i
+                Jl.row(i) = temp2;
+                Jp.row(i) = temp1;
+                Jr.row(i) = temp3;
 
+                Jl(j, j) = pivot = r;
+                Jl(i, j) = 0;
+            }
+        }
+    }
+    void EnergyFunctional::qr3f(MatXXf &Jp, VecXf &Jl, VecXf &Jr) {
+        MatXXf temp1;
+        VecXf temp2, temp3;
+        int nres = Jl.rows();
+        int cols = Jl.cols();
+        assert(nres > 3);
+        // i: row
+        // j: col
+        for (int j = 0; j < cols; j++) {
+            float pivot = Jl(j, j);
+            for (int i = j + 1; i < nres; i++) {
+                if (Jl(i, j) < 1e-10)
+                    continue;
+                float a = Jl(i, j);
+                float r = sqrt(pivot * pivot + a * a);
+                float c = pivot / r;
+                float s = a / r;
+                pivot = r;
+// 变0的，先到temp
+                temp2 = -s * Jl.row(j) + c * Jl.row(i);
+                temp1 = -s * Jp.row(j) + c * Jp.row(i);
+                temp3 = -s * Jr.row(j) + c * Jr.row(i);
+// 变大的.  j是pivot，在上面，i在下面
+                Jl.row(j) = c * Jl.row(j) + s * Jl.row(i);
+                Jp.row(j) = c * Jp.row(j) + s * Jp.row(i);
+                Jr.row(j) = c * Jr.row(j) + s * Jr.row(i);
+// 变0的, temp => i
+                Jl.row(i) = temp2;
+                Jp.row(i) = temp1;
+                Jr.row(i) = temp3;
+
+                Jl(j, j) = pivot = r;
+                Jl(i, j) = 0;
+            }
+        }
+    }
     void EnergyFunctional::qr2(MatXXc &Jl) {
         MatXXc temp1, temp2;
         int nres = Jl.rows();
@@ -85,32 +138,16 @@ namespace dso {
         // j: col
         for (int j = 0; j < cols; j++) {
             rkf_scalar pivot = Jl(j, j);
-//        std::cout << "pivot: " << pivot << std::endl;
             for (int i = j + 1; i < nres; i++) {
-#if false
-                rkf_scalar a;
-                while ((a = Jl(i, j)) == 0 && i < nres) {
-                    i++;
-                }
-#else
+                if (Jl(i, j) < 1e-10)
+                    continue;
                 rkf_scalar a = Jl(i, j);
-#endif
-//            std::cout << "a: " << a << std::endl;
-//            std::cout << "i, j: " << i << " " << j << std::endl;
-                if (i == nres) {
-//                assert(std::abs(pivot) > 0.0000001);
-                    if (pivot == 0.0)
-                        pivot = 0.000001;
-                    Jl(j, j) = pivot;
-                    std::cout << "......pivot...." << pivot << std::endl;
-                    assert(false);
-                    break;
-                }
                 rkf_scalar r = sqrt(pivot * pivot + a * a);
                 rkf_scalar c = pivot / r;
                 rkf_scalar s = a / r;
                 pivot = r;
-
+                assert(std::isfinite(r));
+                assert(r > 1e-10);
 // 变0的，先到temp
                 temp1 = -s * Jl.row(j) + c * Jl.row(i);
 // 变大的.  j是pivot，在上面，i在下面
@@ -202,8 +239,8 @@ namespace dso {
         //! qr分解，以及化简，即删除多余的零行
         qr2(Jr);
         Jr.conservativeResize(Jr.cols(), Jr.cols());
-//    MatXX temp = Jr.topRows(Jr.cols());
-//    Jr = temp;
+//        MatXXc temp = Jr.topRows(Jr.cols());
+//        Jr = temp;
 
         //! 将化简后的Jr分为J, r
         J = Jr.leftCols(Jr.cols() - 1);
