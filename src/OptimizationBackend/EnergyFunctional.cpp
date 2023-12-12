@@ -600,8 +600,8 @@ void EnergyFunctional::marginalizePointsF()
     int m = JM.rows();
     JM.conservativeResize(m + total_rows, JM.cols());
     rM.conservativeResize(m + total_rows);
-    JM.bottomRows(total_rows).setZero();
-    rM.bottomRows(total_rows).setZero();
+//    JM.bottomRows(total_rows).setZero();
+//    rM.bottomRows(total_rows).setZero();
     for (EFPoint *p : allPointsToMarg) {
         JM.middleRows(m, p->Jr1.rows()) = p->Jr1;
         rM.middleRows(m, p->Jr2.rows()) = p->Jr2;
