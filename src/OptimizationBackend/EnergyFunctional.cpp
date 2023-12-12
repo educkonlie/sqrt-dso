@@ -723,6 +723,11 @@ void EnergyFunctional::orthogonalize(VecX* b, MatXX* H)
 
 void EnergyFunctional::solveSystemF(int iteration, double lambda, CalibHessian* HCalib)
 {
+
+#ifdef NEW_METHOD
+//    test_qr();
+//    exit(0);
+#endif
     TicToc timer_solveSystemF;
 
 	if(setting_solverMode & SOLVER_USE_GN) lambda=0;

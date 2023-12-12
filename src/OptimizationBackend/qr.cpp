@@ -35,7 +35,7 @@ namespace dso {
         for (int j = 0; j < cols; j++) {
             rkf_scalar pivot = Jl(j, j);
             for (int i = j + 1; i < nres; i++) {
-                if (Jl(i, j) < 1e-10)
+                if (std::abs(Jl(i, j)) < 1e-10)
                     continue;
                 rkf_scalar a = Jl(i, j);
                 rkf_scalar r = sqrt(pivot * pivot + a * a);
@@ -68,7 +68,7 @@ namespace dso {
         for (int j = 0; j < cols; j++) {
             rkf_scalar pivot = Jl(j, j);
             for (int i = j + 1; i < nres; i++) {
-                if (Jl(i, j) < 1e-10)
+                if (std::abs(Jl(i, j)) < 1e-10)
                     continue;
                 rkf_scalar a = Jl(i, j);
                 rkf_scalar r = sqrt(pivot * pivot + a * a);
@@ -104,7 +104,7 @@ namespace dso {
         for (int j = 0; j < cols; j++) {
             float pivot = Jl(j, j);
             for (int i = j + 1; i < nres; i++) {
-                if (Jl(i, j) < 1e-10)
+                if (std::abs(Jl(i, j)) < 1e-10)
                     continue;
                 float a = Jl(i, j);
                 float r = sqrt(pivot * pivot + a * a);
@@ -139,7 +139,7 @@ namespace dso {
         for (int j = 0; j < cols; j++) {
             rkf_scalar pivot = Jl(j, j);
             for (int i = j + 1; i < nres; i++) {
-                if (Jl(i, j) < 1e-10)
+                if (std::abs(Jl(i, j)) < 1e-10)
                     continue;
                 rkf_scalar a = Jl(i, j);
                 rkf_scalar r = sqrt(pivot * pivot + a * a);
@@ -147,7 +147,7 @@ namespace dso {
                 rkf_scalar s = a / r;
                 pivot = r;
                 assert(std::isfinite(r));
-                assert(r > 1e-10);
+                assert(std::abs(r) > 1e-10);
 // 变0的，先到temp
                 temp1 = -s * Jl.row(j) + c * Jl.row(i);
 // 变大的.  j是pivot，在上面，i在下面
@@ -300,11 +300,11 @@ namespace dso {
         MatXXc R = A;
 
         qr(Qt, R);
-//    std::cout << "I\n" << I << std::endl;
         std::cout << "A\n" << A << std::endl;
-//    std::cout << "Qt\n" << Qt << std::endl;
         std::cout << "R\n" << R << std::endl;
         std::cout << "Q * R\n" << Qt.transpose() * R << std::endl;
+        return;
+
         std::cout << "test 2............" << std::endl;
         A = MatXXc::Random(20, 3 * 3);
         MatXXc Al = A.block(0, 0, 20, 3);
