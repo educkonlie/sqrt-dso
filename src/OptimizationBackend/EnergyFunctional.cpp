@@ -432,8 +432,16 @@ void EnergyFunctional::marginalizeFrame(EFFrame* fh)
         std::cout << "marg frame: " << fh->idx << std::endl;
         std::cout << "fh->prior fh->delta_prior:\n" << fh->prior.transpose() << "\n"
                   << fh->delta_prior.transpose() << std::endl;
+
         std::cout << "JM:\n" << JM << std::endl;
         std::cout << "rM:\n" << rM.transpose() << std::endl;
+//        marg_frame(JM, rM, fh->idx);
+//        std::cout << "JM:\n" << JM << std::endl;
+//        std::cout << "rM:\n" << rM.transpose() << std::endl;
+
+//        std::cout << "JM, rM:\n"
+//                  << (JM.transpose() * JM).ldlt().solve(JM.transpose() * rM).transpose() << std::endl;
+//        exit(0);
     }
 #endif
 
@@ -525,12 +533,13 @@ void EnergyFunctional::marginalizeFrame(EFFrame* fh)
             HMScaled.topLeftCorner(ndim,ndim).transpose());
 	bM = bMScaled.head(ndim);
 
-    if (fh->prior(0) > 1.0) {
-        std::cout << "marg JM, rM:\n"
-                  << (JM.transpose() * JM).ldlt().solve(JM.transpose() * rM).transpose() << std::endl;
-        std::cout << "marg HM, bM:\n"
-                  << HM.ldlt().solve(bM).transpose() << std::endl;
-    }
+//    if (fh->prior(0) > 1.0) {
+//        std::cout << "marg JM, rM:\n"
+//                  << (JM.transpose() * JM).ldlt().solve(JM.transpose() * rM).transpose() << std::endl;
+//        std::cout << "marg HM, bM:\n"
+//                  << HM.ldlt().solve(bM).transpose() << std::endl;
+//    }
+
 //    std::cout << "bM: " << bM.size() << std::endl;
 //    std::cout << "bMScaled: " << bMScaled.size() << std::endl;
 #ifdef NEW_METHOD
@@ -625,8 +634,8 @@ void EnergyFunctional::marginalizePointsF()
     for (EFPoint *p : allPointsToMarg) {
         removePoint(p);
     }
-
-//    std::cout << "JM^T * rM:\n" << (JM.transpose() * rM).transpose() << std::endl;
+//    std::cout << "before compress JM, rM:\n"
+//              << (JM.transpose() * JM).ldlt().solve(JM.transpose() * rM).transpose() << std::endl;
 
     compress_Jr(JM, rM);
 
@@ -636,7 +645,7 @@ void EnergyFunctional::marginalizePointsF()
 //    if (rM.rows() > 10)
 //        std::cout << "rM       :\n" << rM.topRows(10).transpose() << std::endl;
 
-//    std::cout << "JM, rM:\n"
+//    std::cout << "after compress JM, rM:\n"
 //            << (JM.transpose() * JM).ldlt().solve(JM.transpose() * rM).transpose() << std::endl;
 
 	resInM+= accSSE_top_A->nres[0];
@@ -652,7 +661,7 @@ void EnergyFunctional::marginalizePointsF()
 //        std::cout << "bM       :\n" << bM.topRows(10).transpose() << std::endl;
 //    std::cout << "bM size in marg points: " << bM.size() << std::endl;
 
-//    std::cout << "HM, bM:\n"
+//    std::cout << "reference HM, bM:\n"
 //            << HM.ldlt().solve(bM).transpose() << std::endl;
 //    std::cout << std::endl;
 

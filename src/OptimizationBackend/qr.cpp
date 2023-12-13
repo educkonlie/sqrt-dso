@@ -214,16 +214,20 @@ namespace dso {
         MatXXc J_new = MatXXc::Zero(J.rows(), J.cols() - 8);
         MatXXc Jl = MatXXc::Zero(J.rows(), 8);
 
-//! 将需要marg的帧移到第0帧
-        if (idx != 0) {
-            J_new.leftCols(CPARS + idx * 8) = J.leftCols(CPARS + idx * 8);
-            Jl = J.middleCols(CPARS + idx * 8, 8);
-            J_new.rightCols(J_new.cols() - CPARS - idx * 8)
+//! 将需要marg的帧移到Jl
+//        if (idx != 0) {
+        J_new.leftCols(CPARS + idx * 8) = J.leftCols(CPARS + idx * 8);
+        Jl = J.middleCols(CPARS + idx * 8, 8);
+        J_new.rightCols(J_new.cols() - CPARS - idx * 8)
                     = J.rightCols(J.cols() - CPARS - idx * 8 - 8);
-        }
+//        }
+
+//        std::cout << "J_new:\n" << J_new << std::endl;
 
         //! qr分解
         qr3(J_new, Jl, r);
+
+//        std::cout << "J_new:\n" << J_new << std::endl;
 
         //! 去掉上8行 (marg)
         J = J_new.bottomRows(J_new.rows() - 8);
