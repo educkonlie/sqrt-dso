@@ -212,7 +212,7 @@ void EnergyFunctional::setDeltaF(CalibHessian* HCalib)
                     total_rows += p->Jr1.rows();
                 }
             }
-            std::cout << "addPoint 0: total_rows: " << total_rows << std::endl;
+//            std::cout << "addPoint 0: total_rows: " << total_rows << std::endl;
 //            auto times_addPoint = timer_addPoint.toc();
 //            std::cout << "addPoint cost time " << times_addPoint << std::endl;
         }
@@ -412,6 +412,31 @@ void EnergyFunctional::marginalizeFrame(EFFrame* fh)
 	assert(EFIndicesValid);
 
 	assert((int)fh->points.size()==0);
+
+#ifdef NEW_METHOD
+    //! 在JM, rM的idx所在的8列下增加Lambda  Lambda * alpha如下
+    //! JM              rM                   ==        JM'       rM'
+    //! Lambda          Lambda * alpha
+    //!  JM'.transpose * JM' = JM.transpose * JM + Lambda^2
+    //!  JM'.transpose * rM' = JM.transpose * rM + Lambda * (Lambda * alpha)
+    //! Lambda^2即prior.asDiagonal()， alpha即delta_prior
+    if (fh->prior(0) > 1.0) {
+        std::cout << "JM, rM:\n"
+                  << (JM.transpose() * JM).ldlt().solve(JM.transpose() * rM).transpose() << std::endl;
+        std::cout << "HM, bM:\n"
+                  << HM.ldlt().solve(bM).transpose() << std::endl;
+        //!void add_lambda_frame(MatXXc &J, VecXc &r, int idx, Vec8c Lambda, Vec8c alpha);
+        add_lambda_frame(JM, rM, fh->idx,
+                         fh->prior.cast<rkf_scalar>(),
+                         fh->delta_prior.cast<rkf_scalar>());
+        std::cout << "marg frame: " << fh->idx << std::endl;
+        std::cout << "fh->prior fh->delta_prior:\n" << fh->prior.transpose() << "\n"
+                  << fh->delta_prior.transpose() << std::endl;
+        std::cout << "JM:\n" << JM << std::endl;
+        std::cout << "rM:\n" << rM.transpose() << std::endl;
+    }
+#endif
+
 	int ndim = nFrames*8+CPARS-8;// new dimension
 	int odim = nFrames*8+CPARS;// old dimension
 
@@ -442,16 +467,6 @@ void EnergyFunctional::marginalizeFrame(EFFrame* fh)
 		HM.block(io,0,ntail,odim) = botRowsTmp;
 		HM.bottomRows(8) = HtmpRow;
 	}
-#ifdef NEW_METHOD
-#if 0
-    if((int)fh->idx != (int)frames.size()-1) {
-        //! 交换JM里的列
-        MatXX Jtemp = JM.rightCols(8);
-        JM.rightCols(8) = JM.middleCols(CPARS + 8 * fh->idx, 8);
-        JM.middleCols(CPARS + 8 * fh->idx, 8) = Jtemp;
-    }
-#endif
-#endif
 
 
 //	// marginalize. First add prior here, instead of to active.
@@ -465,21 +480,14 @@ void EnergyFunctional::marginalizeFrame(EFFrame* fh)
     //! 只有DSO碰到的第一帧会有fh->prior，需要特别加成
 //    std::cout << "fh->prior fh->delta_prior:\n" << fh->prior.transpose() << "\n"
 //            << fh->delta_prior.transpose() << std::endl;
+
+
+
+//!  边缘化目标帧
 #ifdef NEW_METHOD
-    if (fh->prior(0) > 1.0) {
-//        Vec8 priorF;
-//        for (int i = 0; i < 8; i++)
-//            priorF = sqrt(fh->prior(i));
-        //! 在JM, rM的idx所在的8列下增加Lambda  Lambda * alpha如下
-        //! JM              rM                   ==        JM'       rM'
-        //! Lambda          Lambda * alpha
-        //!  JM'.transpose * JM' = JM.transpose * JM + Lambda^2
-        //!  JM'.transpose * rM' = JM.transpose * rM + Lambda * (Lambda * alpha)
-        //! Lambda^2即prior.asDiagonal()， alpha即delta_prior
-        std::cout << "marg frame: " << fh->idx << std::endl;
-        std::cout << "fh->prior fh->delta_prior:\n" << fh->prior.transpose() << "\n"
-                << fh->delta_prior.transpose() << std::endl;
-    }
+//    if((int)fh->idx != (int)frames.size()-1) {
+        marg_frame(JM, rM, fh->idx);
+//    }
 #endif
 
 //	std::cout << std::setprecision(16) << "HMPre:\n" << HM << "\n\n";
@@ -517,6 +525,12 @@ void EnergyFunctional::marginalizeFrame(EFFrame* fh)
             HMScaled.topLeftCorner(ndim,ndim).transpose());
 	bM = bMScaled.head(ndim);
 
+    if (fh->prior(0) > 1.0) {
+        std::cout << "marg JM, rM:\n"
+                  << (JM.transpose() * JM).ldlt().solve(JM.transpose() * rM).transpose() << std::endl;
+        std::cout << "marg HM, bM:\n"
+                  << HM.ldlt().solve(bM).transpose() << std::endl;
+    }
 //    std::cout << "bM: " << bM.size() << std::endl;
 //    std::cout << "bMScaled: " << bMScaled.size() << std::endl;
 #ifdef NEW_METHOD
@@ -594,7 +608,7 @@ void EnergyFunctional::marginalizePointsF()
 //		removePoint(p);
         total_rows += p->Jr1.rows();
 	}
-    std::cout << "totol_rows: " << total_rows << std::endl;
+//    std::cout << "totol_rows: " << total_rows << std::endl;
 //    if (rM.rows() > 10)
 //        std::cout << "rM      1:\n" << rM.topRows(10).transpose() << std::endl;
     int m = JM.rows();
@@ -616,13 +630,14 @@ void EnergyFunctional::marginalizePointsF()
 
     compress_Jr(JM, rM);
 
-    std::cout << "JM size: " << JM.rows() << " " << JM.cols() << std::endl;
-    std::cout << "JM^T * rM:\n" << (JM.transpose() * rM).transpose() << std::endl;
+//    std::cout << "JM size: " << JM.rows() << " " << JM.cols() << std::endl;
+//    std::cout << "JM^T * rM:\n" << (JM.transpose() * rM).transpose() << std::endl;
 //    std::cout << "JM       :\n" << JM_new << std::endl;
 //    if (rM.rows() > 10)
 //        std::cout << "rM       :\n" << rM.topRows(10).transpose() << std::endl;
 
-    std::cout << (JM.transpose() * JM).ldlt().solve(JM.transpose() * rM).transpose() << std::endl;
+//    std::cout << "JM, rM:\n"
+//            << (JM.transpose() * JM).ldlt().solve(JM.transpose() * rM).transpose() << std::endl;
 
 	resInM+= accSSE_top_A->nres[0];
 
@@ -633,10 +648,13 @@ void EnergyFunctional::marginalizePointsF()
 	HM += setting_margWeightFac*H;
 	bM += setting_margWeightFac*b;
 
-    if (bM.rows() > 10)
-        std::cout << "bM       :\n" << bM.topRows(10).transpose() << std::endl;
+//    if (bM.rows() > 10)
+//        std::cout << "bM       :\n" << bM.topRows(10).transpose() << std::endl;
 //    std::cout << "bM size in marg points: " << bM.size() << std::endl;
-    std::cout << HM.ldlt().solve(bM).transpose() << std::endl;
+
+//    std::cout << "HM, bM:\n"
+//            << HM.ldlt().solve(bM).transpose() << std::endl;
+//    std::cout << std::endl;
 
 	EFIndicesValid = false;
 	makeIDX();
@@ -824,8 +842,6 @@ void EnergyFunctional::solveSystemF(int iteration, double lambda, CalibHessian* 
 
 	//resubstituteF(x, HCalib);
 	resubstituteF_MT(x, HCalib,multiThreading);
-
-
 }
 void EnergyFunctional::makeIDX()
 {

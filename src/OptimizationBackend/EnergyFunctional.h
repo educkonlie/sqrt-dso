@@ -100,7 +100,7 @@ public:
 
     void qr(MatXXc &Jp, MatXXc &Jl);
     void qr2(MatXXc &Jp);
-    void qr3(MatXXc &Jp, VecXc &Jl, VecXc &Jr);
+    void qr3(MatXXc &Jp, MatXXc &Jl, VecXc &Jr);
     void qr3f(MatXXf &Jp, VecXf &Jl, VecXf &Jr);
     void test_qr();
 
@@ -111,8 +111,7 @@ public:
                int num_of_A, VecXc &x,
                rkf_scalar tor, int maxiter, bool MT);
 
-    void marg_frame(MatXXc &J, VecXc &r, MatXXc &J_new, VecXc &r_new,
-                    int nframes, int idx);
+    void marg_frame(MatXXc &J, VecXc &r, int idx);
     void no_marg_frame(MatXXc &J, VecXc &r, MatXXc &J_new, VecXc &r_new, int nframes);
     void compress_Jr(MatXXc &J, VecXc &r);
     void add_lambda_frame(MatXXc &J, VecXc &r, int idx, Vec8c Lambda, Vec8c alpha);

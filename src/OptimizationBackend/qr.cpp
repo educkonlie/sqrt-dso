@@ -42,6 +42,8 @@ namespace dso {
                 rkf_scalar c = pivot / r;
                 rkf_scalar s = a / r;
                 pivot = r;
+                assert(std::isfinite(r));
+                assert(std::abs(r) > 1e-10);
 // 变0的，先到temp
                 temp1 = -s * Jl.row(j) + c * Jl.row(i);
                 temp2 = -s * Jp.row(j) + c * Jp.row(i);
@@ -57,9 +59,9 @@ namespace dso {
             }
         }
     }
-    void EnergyFunctional::qr3(MatXXc &Jp, VecXc &Jl, VecXc &Jr) {
-        MatXXc temp1;
-        VecXc temp2, temp3;
+    void EnergyFunctional::qr3(MatXXc &Jp, MatXXc &Jl, VecXc &Jr) {
+        MatXXc temp1, temp2;
+        VecXc temp3;
         int nres = Jl.rows();
         int cols = Jl.cols();
         assert(nres > 3);
@@ -75,17 +77,19 @@ namespace dso {
                 rkf_scalar c = pivot / r;
                 rkf_scalar s = a / r;
                 pivot = r;
+                assert(std::isfinite(r));
+                assert(std::abs(r) > 1e-10);
 // 变0的，先到temp
-                temp2 = -s * Jl.row(j) + c * Jl.row(i);
                 temp1 = -s * Jp.row(j) + c * Jp.row(i);
+                temp2 = -s * Jl.row(j) + c * Jl.row(i);
                 temp3 = -s * Jr.row(j) + c * Jr.row(i);
 // 变大的.  j是pivot，在上面，i在下面
-                Jl.row(j) = c * Jl.row(j) + s * Jl.row(i);
                 Jp.row(j) = c * Jp.row(j) + s * Jp.row(i);
+                Jl.row(j) = c * Jl.row(j) + s * Jl.row(i);
                 Jr.row(j) = c * Jr.row(j) + s * Jr.row(i);
 // 变0的, temp => i
-                Jl.row(i) = temp2;
                 Jp.row(i) = temp1;
+                Jl.row(i) = temp2;
                 Jr.row(i) = temp3;
 
                 Jl(j, j) = pivot = r;
@@ -111,6 +115,8 @@ namespace dso {
                 float c = pivot / r;
                 float s = a / r;
                 pivot = r;
+                assert(std::isfinite(r));
+                assert(std::abs(r) > 1e-10);
 // 变0的，先到temp
                 temp2 = -s * Jl.row(j) + c * Jl.row(i);
                 temp1 = -s * Jp.row(j) + c * Jp.row(i);
@@ -166,6 +172,7 @@ namespace dso {
 // 最后将JM_marg对应的行列删除，将底下为0的行删除
 // 如果不做marg，那么仍旧可以通过求解(J.transpose() * JM).ldlt().solve(J.transpose() * rM)
 // 来比较，如果解不变，则化简有效
+#if 0
     void EnergyFunctional::marg_frame(MatXXc &J, VecXc &r, MatXXc &J_new, VecXc &r_new,
                                       int nframes, int idx)
     {
@@ -201,6 +208,28 @@ namespace dso {
         J_new.leftCols(CPARS) = J.middleCols(nframes * 8 - 8, CPARS);
         J_new.middleCols(CPARS, nframes * 8 - 8) = J.leftCols(nframes * 8 - 8);
     }
+#endif
+    void EnergyFunctional::marg_frame(MatXXc &J, VecXc &r, int idx)
+    {
+        MatXXc J_new = MatXXc::Zero(J.rows(), J.cols() - 8);
+        MatXXc Jl = MatXXc::Zero(J.rows(), 8);
+
+//! 将需要marg的帧移到第0帧
+        if (idx != 0) {
+            J_new.leftCols(CPARS + idx * 8) = J.leftCols(CPARS + idx * 8);
+            Jl = J.middleCols(CPARS + idx * 8, 8);
+            J_new.rightCols(J_new.cols() - CPARS - idx * 8)
+                    = J.rightCols(J.cols() - CPARS - idx * 8 - 8);
+        }
+
+        //! qr分解
+        qr3(J_new, Jl, r);
+
+        //! 去掉上8行 (marg)
+        J = J_new.bottomRows(J_new.rows() - 8);
+        VecXc r_new = r;
+        r = r_new.bottomRows(r_new.rows() - 8);
+    }
 
     void EnergyFunctional::no_marg_frame(MatXXc &J, VecXc &r, MatXXc &J_new, VecXc &r_new, int nframes)
     {
@@ -227,6 +256,7 @@ namespace dso {
         J_new.leftCols(CPARS) = J.middleCols(nframes * 8, CPARS);
         J_new.middleCols(CPARS, nframes * 8) = J.leftCols(nframes * 8);
     }
+
     void EnergyFunctional::compress_Jr(MatXXc &J, VecXc &r)
     {
         if (J.rows() < 4 * J.cols())
