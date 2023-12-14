@@ -106,11 +106,11 @@ public:
     void qr3f(MatXXf &Jp, VecXf &Jl, VecXf &Jr);
     void test_qr();
 
-    void pcgReductor(VecXc AAq[], MatXXc A[], VecXc &q,
+    void pcgReductor(VecXc AAq[], std::vector<MatXXc> &A, VecXc &q,
                      int min, int max, Vec10 *stat, int tid);
-    void pcgMT(IndexThreadReduce<Vec10> *red, MatXXc A[], VecXc b[],
+    void pcgMT(IndexThreadReduce<Vec10> *red, std::vector<MatXXc> &A, std::vector<VecXc> &b,
                EnergyFunctional const * const EF,
-               int num_of_A, VecXc &x,
+               /*int num_of_A,*/ VecXc &x,
                rkf_scalar tor, int maxiter, bool MT);
 
     void marg_frame(MatXXc &J, VecXc &r, int idx);
@@ -129,6 +129,8 @@ public:
 	std::vector<VecX> lastNullspaces_scale;
 	std::vector<VecX> lastNullspaces_affA;
 	std::vector<VecX> lastNullspaces_affB;
+
+    IndexThreadReduce<Vec10>* red;
 
 	std::map<uint64_t,
 	  Eigen::Vector2i,

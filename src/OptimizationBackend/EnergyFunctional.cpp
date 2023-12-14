@@ -113,7 +113,7 @@ EnergyFunctional::EnergyFunctional()
 	adTarget=0;
 
 
-//	red=0;
+	red=0;
 
 	adHostF=0;
 	adTargetF=0;
@@ -211,8 +211,6 @@ void EnergyFunctional::setDeltaF(CalibHessian* HCalib)
         MatXXc H1 = MatXXc::Zero(accSSE_top_A->nframes[0]*8+CPARS, accSSE_top_A->nframes[0]*8+CPARS);
         VecXc b1 = VecXc::Zero(accSSE_top_A->nframes[0] * 8+CPARS);
 
-
-
         {
 //            TicToc timer_addPoint;
             int total_rows = 0;
@@ -220,8 +218,12 @@ void EnergyFunctional::setDeltaF(CalibHessian* HCalib)
                 for (EFPoint *p: f->points) {
                     accSSE_top_A->addPoint<0>(H1, b1, p, this, 0);
                     total_rows += p->Jr1.rows();
-                    Js.push_back(p->Jr1);
-                    rs.push_back(p->Jr2);
+                    if (p->Jr1.rows() > 0) {
+                        Js.push_back(p->Jr1);
+                        rs.push_back(p->Jr2);
+                    } else {
+//                        assert(false);
+                    }
                 }
             }
 //            std::cout << "addPoint 0: total_rows: " << total_rows << std::endl;
@@ -777,14 +779,38 @@ void EnergyFunctional::solveSystemF(int iteration, double lambda, CalibHessian* 
 	assert(EFDeltaValid);
 	assert(EFAdjointsValid);
 	assert(EFIndicesValid);
-#ifdef NEW_METHOD
 
-#endif
 
 	MatXX  HA_top;
 	VecX   bA_top, bM_top;
 
     accumulateAF_MT(HA_top, bA_top, multiThreading);
+
+#ifdef NEW_METHOD
+    if (JM.rows() > 0) {
+        Js.push_back(JM);
+        rs.push_back(rM);
+    } else {
+        std::cout << "JM is empty" << std::endl;
+    }
+//    std::cout << "rkf 111" << std::endl;
+    VecXc x_new;
+//    for (int i = 0; i < Js.size(); i++) {
+//        std::cout << "Js:\n" << Js[i] << std::endl;
+//        std::cout << "rs:\n" << rs[i].transpose() << std::endl;
+//    }
+    MatXXc H_rkf = MatXXc::Zero(CPARS + nFrames * 8, CPARS + nFrames * 8);
+    VecX b_rkf = VecX::Zero(CPARS + nFrames * 8);
+
+    for (int i = 0; i < Js.size(); i++) {
+        H_rkf += Js[i].transpose() * Js[i];
+        b_rkf += Js[i].transpose() * rs[i];
+    }
+
+    pcgMT(red, Js, rs, this, x_new, 1e-8, 10, false);
+//    std::cout << "rkf 112" << std::endl;
+#endif
+
 //  跟上次邊緣化的幀無關的points們，加上新補增的points們，計算最新的殘差，SC掉points，生成最新的H, b系統
 #if 0
 	accumulateSCF_MT(H_sc, b_sc,multiThreading);
@@ -854,6 +880,11 @@ void EnergyFunctional::solveSystemF(int iteration, double lambda, CalibHessian* 
 		MatXX HFinalScaled = SVecI.asDiagonal() * HFinal_top * SVecI.asDiagonal();
 		x = SVecI.asDiagonal() * HFinalScaled.ldlt().solve(SVecI.asDiagonal() * bFinal_top);//  SVec.asDiagonal() * svd.matrixV() * Ub;
 	}
+//    std::cout << "x_new: " << x_new.transpose() << std::endl;
+    std::cout << "x_old: " << HFinal_top.ldlt().solve(bFinal_top).transpose() << std::endl;
+    std::cout << "x_3rd: " << H_rkf.ldlt().solve(b_rkf).transpose() << std::endl;
+//    std::cout << "x_4th: " << x.transpose() << std::endl;
+    std::cout << std::endl;
 
 	if((setting_solverMode & SOLVER_ORTHOGONALIZE_X) ||
             (iteration >= 2 &&

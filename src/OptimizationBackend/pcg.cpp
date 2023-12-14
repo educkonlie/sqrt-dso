@@ -12,7 +12,7 @@
 
 namespace dso {
 
-        void EnergyFunctional::pcgReductor(VecXc AAq[], MatXXc A[], VecXc &q,
+        void EnergyFunctional::pcgReductor(VecXc AAq[], std::vector<MatXXc> &A, VecXc &q,
                                            int min, int max, Vec10 *stat, int tid)
         {
 //    std::cout << "tid: " << tid << std::endl;
@@ -27,18 +27,23 @@ namespace dso {
         }
 
         //! A[]里可以存放指针，每个指针都是一个矩阵的地址
-        void EnergyFunctional::pcgMT(IndexThreadReduce<Vec10> *red, MatXXc A[], VecXc b[],
+        void EnergyFunctional::pcgMT(IndexThreadReduce<Vec10> *red,
+                                     std::vector<MatXXc> &A, std::vector<VecXc> &b,
                                      EnergyFunctional const * const EF,
-                                     int num_of_A, VecXc &x,
+                                     /*int num_of_A,*/ VecXc &x,
                                      rkf_scalar tor, int maxiter, bool MT)
         {
             x = VecXc::Zero(A[0].cols());
             VecXc lambda = VecXc::Zero(A[0].cols());
             VecXc r = VecXc::Zero(A[0].cols());
 
-            for (int j = 0; j < num_of_A; j++) {
-                for (int i = 0; i < A[0].cols(); i++)
+            for (int j = 0; j < A.size(); j++) {
+//                std::cout << "A[j]: " << j << std::endl;
+//                std::cout << A[j] << std::endl;
+//                std::cout << "rkf 115 " << A.size() << std::endl;
+                for (int i = 0; i < A[j].cols(); i++)
                     lambda(i) += (A[j].col(i).transpose() * A[j].col(i));
+//                std::cout << "rkf 116 " << A[j].cols() << std::endl;
                 r = r + A[j].transpose() * b[j];
             }
             for (int i = 0; i < A[0].cols(); i++)
@@ -51,9 +56,11 @@ namespace dso {
             for (int i = 0; i < maxiter; i++) {
                 VecXc AAq = VecXc::Zero(A[0].cols());
                 if (!MT) {
-                    for (int j = 0; j < num_of_A; j++) {
+                    for (int j = 0; j < A.size(); j++) {
+//                        std::cout << "rkf 114" << std::endl;
                         AAq = AAq + (A[j].transpose() * (A[j] * q));
                     }
+//                    std::cout << "rkf 113" << std::endl;
 //            pcgReductor(&AAq, A, q, 0, num_of_A, NULL, -1);
                 } else {
                     VecXc AAqs[NUM_THREADS];
@@ -62,7 +69,7 @@ namespace dso {
                     }
                     red->reduce(boost::bind(&EnergyFunctional::pcgReductor,
                                             this, AAqs, A, q, _1, _2, _3, _4),
-                                0, num_of_A, 0);
+                                0, A.size(), 0);
                     AAq = AAqs[0];
                     for (int k = 1; k < NUM_THREADS; k++)
                         AAq.noalias() += AAqs[k];
