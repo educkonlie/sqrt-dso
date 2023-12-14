@@ -108,6 +108,7 @@ typedef Eigen::Matrix<myscalar,8,8> Mat88;
 //typedef Eigen::Matrix<myscalar,7,7> Mat77;
 
 typedef Eigen::Matrix<myscalar,CPARS,1> VecC;
+typedef Eigen::Matrix<rkf_scalar, CPARS, 1> VecCc;
 typedef Eigen::Matrix<float,CPARS,1> VecCf;
 //typedef Eigen::Matrix<myscalar,13,1> Vec13;
 typedef Eigen::Matrix<myscalar,10,1> Vec10;

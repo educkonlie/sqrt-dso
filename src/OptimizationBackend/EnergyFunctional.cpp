@@ -84,6 +84,9 @@ void EnergyFunctional::setAdjointsF(CalibHessian* Hcalib)
 			adTarget[h+t*nFrames] = AT;
 		}
 	cPrior = VecC::Constant(setting_initialCalibHessian);
+#ifdef NEW_METHOD
+    cPrior_new_method = VecCc::Constant(std::sqrt(setting_initialCalibHessian));
+#endif
 
 
 	if(adHostF != 0) delete[] adHostF;
@@ -177,6 +180,9 @@ void EnergyFunctional::setDeltaF(CalibHessian* HCalib)
 		}
 
 	cDeltaF = HCalib->value_minus_value_zero.cast<float>();
+//#ifdef NEW_METHOD
+//    cDeltaF_new_method = HCalib->value_minus_value_zero.cast<rkf_scalar>();
+//#endif
 	for(EFFrame* f : frames) {
 		f->delta = f->data->get_state_minus_stateZero().head<8>();
 		f->delta_prior = f->data->get_state().head<8>();
@@ -203,6 +209,8 @@ void EnergyFunctional::setDeltaF(CalibHessian* HCalib)
         MatXXc H1 = MatXXc::Zero(accSSE_top_A->nframes[0]*8+CPARS, accSSE_top_A->nframes[0]*8+CPARS);
         VecXc b1 = VecXc::Zero(accSSE_top_A->nframes[0] * 8+CPARS);
 
+
+
         {
 //            TicToc timer_addPoint;
             int total_rows = 0;
@@ -210,6 +218,8 @@ void EnergyFunctional::setDeltaF(CalibHessian* HCalib)
                 for (EFPoint *p: f->points) {
                     accSSE_top_A->addPoint<0>(H1, b1, p, this, 0);
                     total_rows += p->Jr1.rows();
+                    Js.push_back(p->Jr1);
+                    rs.push_back(p->Jr2);
                 }
             }
 //            std::cout << "addPoint 0: total_rows: " << total_rows << std::endl;
@@ -420,14 +430,14 @@ void EnergyFunctional::marginalizeFrame(EFFrame* fh)
     //!  JM'.transpose * JM' = JM.transpose * JM + Lambda^2
     //!  JM'.transpose * rM' = JM.transpose * rM + Lambda * (Lambda * alpha)
     //! Lambda^2即prior.asDiagonal()， alpha即delta_prior
-    if (fh->prior(0) > 1.0) {
+    if (fh->prior(6) > 0.001) {
         std::cout << "JM, rM:\n"
                   << (JM.transpose() * JM).ldlt().solve(JM.transpose() * rM).transpose() << std::endl;
         std::cout << "HM, bM:\n"
                   << HM.ldlt().solve(bM).transpose() << std::endl;
         //!void add_lambda_frame(MatXXc &J, VecXc &r, int idx, Vec8c Lambda, Vec8c alpha);
         add_lambda_frame(JM, rM, fh->idx,
-                         fh->prior.cast<rkf_scalar>(),
+                         fh->prior_new_method,
                          fh->delta_prior.cast<rkf_scalar>());
         std::cout << "marg frame: " << fh->idx << std::endl;
         std::cout << "fh->prior fh->delta_prior:\n" << fh->prior.transpose() << "\n"
@@ -533,12 +543,12 @@ void EnergyFunctional::marginalizeFrame(EFFrame* fh)
             HMScaled.topLeftCorner(ndim,ndim).transpose());
 	bM = bMScaled.head(ndim);
 
-//    if (fh->prior(0) > 1.0) {
-//        std::cout << "marg JM, rM:\n"
-//                  << (JM.transpose() * JM).ldlt().solve(JM.transpose() * rM).transpose() << std::endl;
-//        std::cout << "marg HM, bM:\n"
-//                  << HM.ldlt().solve(bM).transpose() << std::endl;
-//    }
+    if (fh->prior(6) > 0.001) {
+        std::cout << "marg JM, rM:\n"
+                  << (JM.transpose() * JM).ldlt().solve(JM.transpose() * rM).transpose() << std::endl;
+        std::cout << "marg HM, bM:\n"
+                  << HM.ldlt().solve(bM).transpose() << std::endl;
+    }
 
 //    std::cout << "bM: " << bM.size() << std::endl;
 //    std::cout << "bMScaled: " << bMScaled.size() << std::endl;
@@ -765,6 +775,9 @@ void EnergyFunctional::solveSystemF(int iteration, double lambda, CalibHessian* 
 	assert(EFDeltaValid);
 	assert(EFAdjointsValid);
 	assert(EFIndicesValid);
+#ifdef NEW_METHOD
+
+#endif
 
 	MatXX  HA_top;
 	VecX   bA_top, bM_top;

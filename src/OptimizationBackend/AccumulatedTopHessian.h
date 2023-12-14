@@ -76,7 +76,7 @@ public:
 		nres[tid]=0;
 
 	}
-	void stitchDouble(MatXX &H, VecX &b, EnergyFunctional const * const EF,
+	void stitchDouble(MatXX &H, VecX &b, EnergyFunctional *EF,
                       bool usePrior, bool useDelta, int tid=0);
 
 #if 1

@@ -97,6 +97,8 @@ public:
 #ifdef NEW_METHOD
     MatXXc JM;
     VecXc rM;
+    std::vector<MatXXc> Js;
+    std::vector<VecXc> rs;
 
     void qr(MatXXc &Jp, MatXXc &Jl);
     void qr2(MatXXc &Jp);
@@ -154,6 +156,10 @@ private:
 
 	VecC cPrior;
 	VecCf cDeltaF;
+#ifdef NEW_METHOD
+    VecCc cPrior_new_method;
+//    VecCc cDeltaF_new_method;
+#endif
 
 	AccumulatedTopHessianSSE* accSSE_top_A;
 

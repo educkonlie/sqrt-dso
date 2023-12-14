@@ -51,6 +51,13 @@ void EFFrame::takeData()
 {
     //! 这个prior是真先验，直接就是DSO写死的常数(经验数据)
 	prior = data->getPrior().head<8>();
+#ifdef NEW_METHOD
+//    prior_new_method = prior.cast<rkf_scalar>().sqrt();
+    for (int i = 0; i < prior.rows(); i++)
+        prior_new_method(i) = sqrt(prior(i));
+    std::cout << "prior           : " << prior.transpose() << std::endl;
+    std::cout << "prior_new_method: " << prior_new_method.transpose() << std::endl;
+#endif
     //! 这个delta才是取之前计算得到的值
 //    assert(data->state_zero.head<6>().squaredNorm() < 1e-20);
 //    std::cout << "state_zero: " << data->get_state_zero().head<10>() << std::endl;

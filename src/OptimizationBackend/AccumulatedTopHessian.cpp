@@ -492,21 +492,45 @@ namespace dso
             (MatXXc &H1, VecXc &b1,
              EFPoint* p, EnergyFunctional  *ef, int tid);
 
-void AccumulatedTopHessianSSE::stitchDouble(MatXX &H, VecX &b, EnergyFunctional const * const EF, bool usePrior, bool useDelta, int tid)
-{
-    H = MatXX::Zero(nframes[tid]*8+CPARS, nframes[tid]*8+CPARS);
-	b = VecX::Zero(nframes[tid]*8+CPARS);
+void AccumulatedTopHessianSSE::stitchDouble(MatXX &H, VecX &b, EnergyFunctional *EF, bool usePrior, bool useDelta, int tid) {
+    H = MatXX::Zero(nframes[tid] * 8 + CPARS, nframes[tid] * 8 + CPARS);
+    b = VecX::Zero(nframes[tid] * 8 + CPARS);
 
-	if(usePrior) {
-		assert(useDelta);
-		H.diagonal().head<CPARS>() += EF->cPrior;
-		b.head<CPARS>() += EF->cPrior.cwiseProduct(EF->cDeltaF.cast<myscalar>());
-		for (int h=0;h<nframes[tid];h++) {
-            H.diagonal().segment<8>(CPARS+h*8) += EF->frames[h]->prior;
-            b.segment<8>(CPARS+h*8) += EF->frames[h]->prior.cwiseProduct(EF->frames[h]->delta_prior);
-		}
-	}
+    MatXXc J_temp = MatXXc::Zero(CPARS, nframes[tid] * 8 + CPARS);
+    VecXc r_temp = VecXc::Zero(CPARS);
 
+    if (usePrior) {
+        assert(useDelta);
+        H.diagonal().head<CPARS>() += EF->cPrior;
+        b.head<CPARS>() += EF->cPrior.cwiseProduct(EF->cDeltaF.cast<myscalar>());
+#ifdef NEW_METHOD
+        J_temp.block(0, 0, CPARS, CPARS)
+                = EF->cPrior_new_method.asDiagonal();
+        r_temp = EF->cPrior_new_method.cwiseProduct(EF->cDeltaF.cast<rkf_scalar>());
+#endif
+        for (int h = 0; h < nframes[tid]; h++) {
+            if (EF->frames[h]->prior(6) > 0.001) {
+                std::cout << "fh->prior == " << EF->frames[h]->prior.transpose() << std::endl;
+                H.diagonal().segment<8>(CPARS + h * 8) += EF->frames[h]->prior;
+                b.segment<8>(CPARS + h * 8) += EF->frames[h]->prior.cwiseProduct(EF->frames[h]->delta_prior);
+
+#ifdef NEW_METHOD
+                if (EF->frames[h]->prior(6) > 0.001) {
+                    std::cout << "fh->prior == " << EF->frames[h]->prior.transpose() << std::endl;
+                    EF->add_lambda_frame(J_temp, r_temp, h,
+                                         EF->frames[h]->prior_new_method,
+                                         EF->frames[h]->delta_prior.cast<rkf_scalar>());
+                }
+#endif
+            }
+
+        }
+#ifdef NEW_METHOD
+        EF->Js.push_back(J_temp);
+        EF->rs.push_back(r_temp);
+#endif
+
+    }
 }
 
 }
