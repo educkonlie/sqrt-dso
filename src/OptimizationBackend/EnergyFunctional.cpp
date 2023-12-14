@@ -85,7 +85,7 @@ void EnergyFunctional::setAdjointsF(CalibHessian* Hcalib)
 		}
 	cPrior = VecC::Constant(setting_initialCalibHessian);
 #ifdef NEW_METHOD
-    cPrior_new_method = VecCc::Constant(std::sqrt(setting_initialCalibHessian));
+    cPrior_new_method = VecCc::Constant(std::sqrt((rkf_scalar)setting_initialCalibHessian));
 #endif
 
 
@@ -180,12 +180,20 @@ void EnergyFunctional::setDeltaF(CalibHessian* HCalib)
 		}
 
 	cDeltaF = HCalib->value_minus_value_zero.cast<float>();
-//#ifdef NEW_METHOD
-//    cDeltaF_new_method = HCalib->value_minus_value_zero.cast<rkf_scalar>();
-//#endif
+#ifdef NEW_METHOD
+//    for (int i = 0; i < cDeltaF.rows(); i++)
+//        cDeltaF_new_method = HCalib->value_minus_value_zero.cast<rkf_scalar>();
+//        cDeltaF_new_method(i) = std::sqrt(cDeltaF(i));
+#endif
 	for(EFFrame* f : frames) {
 		f->delta = f->data->get_state_minus_stateZero().head<8>();
 		f->delta_prior = f->data->get_state().head<8>();
+#ifdef NEW_METHOD
+//        for (int i = 0; i < f->delta_prior.rows(); i++) {
+//            assert(f->delta_prior(i) > 0.0);
+//            f->delta_prior_new_method(i) = std::sqrt(f->delta_prior(i));
+//        }
+#endif
 
 		/*for(EFPoint* p : f->points) {
             p->deltaF = p->data->idepth - p->data->idepth_zero;
@@ -226,7 +234,16 @@ void EnergyFunctional::setDeltaF(CalibHessian* HCalib)
                     }
                 }
             }
-//            std::cout << "addPoint 0: total_rows: " << total_rows << std::endl;
+//            std::cout << "before stitchDouble:" << std::endl;
+//            std::cout << H1.ldlt().solve(b1).transpose() << std::endl;
+//            MatXXc H2 = MatXXc::Zero(accSSE_top_A->nframes[0]*8+CPARS, accSSE_top_A->nframes[0]*8+CPARS);
+//            VecXc b2 = VecXc::Zero(accSSE_top_A->nframes[0] * 8+CPARS);
+//            for (int i = 0; i < Js.size(); i++) {
+//                H2 += Js[i].transpose() * Js[i];
+//                b2 += Js[i].transpose() * rs[i];
+//            }
+//            std::cout << H2.ldlt().solve(b2).transpose() << std::endl;
+
 //            auto times_addPoint = timer_addPoint.toc();
 //            std::cout << "addPoint cost time " << times_addPoint << std::endl;
         }
@@ -239,6 +256,15 @@ void EnergyFunctional::setDeltaF(CalibHessian* HCalib)
         H += H1.cast<myscalar>();
         b += b1.cast<myscalar>();
 
+//        std::cout << "after stitchDouble:" << std::endl;
+//        std::cout << H.ldlt().solve(b).transpose() << std::endl;
+//        MatXXc H3 = MatXXc::Zero(accSSE_top_A->nframes[0]*8+CPARS, accSSE_top_A->nframes[0]*8+CPARS);
+//        VecXc b3 = VecXc::Zero(accSSE_top_A->nframes[0] * 8+CPARS);
+//        for (int i = 0; i < Js.size(); i++) {
+//            H3 += Js[i].transpose() * Js[i];
+//            b3 += Js[i].transpose() * rs[i];
+//        }
+//        std::cout << H3.ldlt().solve(b3).transpose() << std::endl;
 
         resInA = accSSE_top_A->nres[0];
     }
@@ -640,16 +666,16 @@ void EnergyFunctional::marginalizePointsF()
 //    JM.bottomRows(total_rows).setZero();
 //    rM.bottomRows(total_rows).setZero();
     for (EFPoint *p : allPointsToMarg) {
-        JM.middleRows(m, p->Jr1.rows()) = p->Jr1;
-        rM.middleRows(m, p->Jr2.rows()) = p->Jr2;
+        JM.middleRows(m, p->Jr1.rows()) = 0.5 * p->Jr1;
+        rM.middleRows(m, p->Jr2.rows()) = 0.5 * p->Jr2;
         m += p->Jr2.rows();
 //        removePoint(p);
     }
     for (EFPoint *p : allPointsToMarg) {
         removePoint(p);
     }
-//    std::cout << "before compress JM, rM:\n"
-//              << (JM.transpose() * JM).ldlt().solve(JM.transpose() * rM).transpose() << std::endl;
+    std::cout << "before compress JM, rM:\n"
+              << (JM.transpose() * JM).ldlt().solve(JM.transpose() * rM).transpose() << std::endl;
 
     compress_Jr(JM, rM);
 
@@ -787,28 +813,33 @@ void EnergyFunctional::solveSystemF(int iteration, double lambda, CalibHessian* 
     accumulateAF_MT(HA_top, bA_top, multiThreading);
 
 #ifdef NEW_METHOD
-    if (JM.rows() > 0) {
-        Js.push_back(JM);
-        rs.push_back(rM);
-    } else {
-        std::cout << "JM is empty" << std::endl;
-    }
+//    if (JM.rows() > 0) {
+//        Js.push_back(JM);
+//        rs.push_back(rM);
+//    } else {
+//        std::cout << "JM is empty" << std::endl;
+//    }
+//    std::cout << (JM.transpose() * JM).ldlt().solve(JM.transpose() * rM).transpose() << std::endl;
+//    std::cout << HM.ldlt().solve(bM).transpose() << std::endl;
 //    std::cout << "rkf 111" << std::endl;
-    VecXc x_new;
 //    for (int i = 0; i < Js.size(); i++) {
 //        std::cout << "Js:\n" << Js[i] << std::endl;
 //        std::cout << "rs:\n" << rs[i].transpose() << std::endl;
 //    }
-    MatXXc H_rkf = MatXXc::Zero(CPARS + nFrames * 8, CPARS + nFrames * 8);
-    VecX b_rkf = VecX::Zero(CPARS + nFrames * 8);
 
-    for (int i = 0; i < Js.size(); i++) {
-        H_rkf += Js[i].transpose() * Js[i];
-        b_rkf += Js[i].transpose() * rs[i];
-    }
+//    MatXXc H_rkf = MatXXc::Zero(CPARS + nFrames * 8, CPARS + nFrames * 8);
+//    VecX b_rkf = VecX::Zero(CPARS + nFrames * 8);
+//
+//    for (int i = 0; i < Js.size(); i++) {
+//        H_rkf += Js[i].transpose() * Js[i];
+//        b_rkf += Js[i].transpose() * rs[i];
+//    }
 
-    pcgMT(red, Js, rs, this, x_new, 1e-8, 10, false);
 //    std::cout << "rkf 112" << std::endl;
+//    std::cout << (H_rkf.transpose() * H_rkf).ldlt().solve(H_rkf.transpose() * b_rkf).transpose()
+//            << std::endl;
+//    std::cout << (HA_top.transpose() * HA_top).ldlt().solve(HA_top.transpose() * bA_top).transpose()
+//            << std::endl;
 #endif
 
 //  跟上次邊緣化的幀無關的points們，加上新補增的points們，計算最新的殘差，SC掉points，生成最新的H, b系統
@@ -821,7 +852,23 @@ void EnergyFunctional::solveSystemF(int iteration, double lambda, CalibHessian* 
     //! 之后应该是在前端一直保存了zero点，所以每次要使用这个祖传HM, bM的时候，都需要现求一次state - state_zero
     //! 然后将这个bM调整如下
 	bM_top = (bM+ HM * getStitchedDeltaF());
+#ifdef NEW_METHOD
+    VecXc rM_top;
+    if (JM.rows() > 0) {
+        rM_top = rM + JM * getStitchedDeltaF();
+        Js.push_back(JM);
+        rs.push_back(rM_top);
+    } else {
+        std::cout << "JM is empty" << std::endl;
+        std::cout << "HM:\n" << HM << std::endl;
+        std::cout << "bM:\n" << bM.transpose() << std::endl;
+//        assert(false);
+    }
+#endif
 //    std::cout << "getStitchedDeltaF(): " << getStitchedDeltaF() << std::endl;
+
+    VecXc x_new;
+    pcgMT(red, Js, rs, this, x_new, 1e-10, 100, false);
 
 	MatXX HFinal_top;
 	VecX bFinal_top;
@@ -880,10 +927,19 @@ void EnergyFunctional::solveSystemF(int iteration, double lambda, CalibHessian* 
 		MatXX HFinalScaled = SVecI.asDiagonal() * HFinal_top * SVecI.asDiagonal();
 		x = SVecI.asDiagonal() * HFinalScaled.ldlt().solve(SVecI.asDiagonal() * bFinal_top);//  SVec.asDiagonal() * svd.matrixV() * Ub;
 	}
-//    std::cout << "x_new: " << x_new.transpose() << std::endl;
+
+    std::cout << "x_new: " << x_new.transpose() << std::endl;
     std::cout << "x_old: " << HFinal_top.ldlt().solve(bFinal_top).transpose() << std::endl;
-    std::cout << "x_3rd: " << H_rkf.ldlt().solve(b_rkf).transpose() << std::endl;
 //    std::cout << "x_4th: " << x.transpose() << std::endl;
+
+    MatXXc H_rkf2 = MatXXc::Zero(CPARS + nFrames * 8, CPARS + nFrames * 8);
+    VecX b_rkf2 = VecX::Zero(CPARS + nFrames * 8);
+
+    for (int i = 0; i < Js.size(); i++) {
+        H_rkf2 += Js[i].transpose() * Js[i];
+        b_rkf2 += Js[i].transpose() * rs[i];
+    }
+    std::cout << "x_3rd: " << H_rkf2.ldlt().solve(b_rkf2).transpose() << std::endl;
     std::cout << std::endl;
 
 	if((setting_solverMode & SOLVER_ORTHOGONALIZE_X) ||

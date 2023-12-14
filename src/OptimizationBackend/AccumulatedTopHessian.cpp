@@ -63,6 +63,9 @@ namespace dso
         VecXf Jr2 = VecXf::Zero(8 * FRAMES);;
         VecXf Jl  = VecXf::Zero(8 * FRAMES);
 
+        p->Jr1 = MatXXc::Zero(0, 0);
+        p->Jr2 = VecXc::Zero(0);
+
         assert(mode==0 || mode==2);
 
         VecCf dc = ef->cDeltaF;
@@ -153,6 +156,9 @@ namespace dso
                 p->bdSumF = 0;
                 p->data->idepth_hessian = 0;
                 p->data->maxRelBaseline = 0;
+                p->Jr1 = MatXXc::Zero(0, 0);
+                p->Jr2 = VecXc::Zero(0);
+                assert(p->Jr1.rows() == 0);
                 return;
             }
         }
@@ -216,6 +222,7 @@ namespace dso
 
         assert(p->Jr1.rows() == 8 * k - 1);
 
+        assert(p->Jr1.rows() > 0);
         H1 += (p->Jr1.transpose() * p->Jr1);
 //        H1 += (Jr1.transpose() * Jr1);
         b1 += (p->Jr1.transpose() * p->Jr2);
@@ -506,21 +513,25 @@ void AccumulatedTopHessianSSE::stitchDouble(MatXX &H, VecX &b, EnergyFunctional 
 #ifdef NEW_METHOD
         J_temp.block(0, 0, CPARS, CPARS)
                 = EF->cPrior_new_method.asDiagonal();
-        r_temp = EF->cPrior_new_method.cwiseProduct(EF->cDeltaF.cast<rkf_scalar>());
+        r_temp = EF->cPrior_new_method.asDiagonal() * (EF->cDeltaF.cast<rkf_scalar>());
+//        r_temp = EF->cPrior_new_method.cwiseProduct(EF->cDeltaF.cast<rkf_scalar>());
 #endif
         for (int h = 0; h < nframes[tid]; h++) {
             if (EF->frames[h]->prior(6) > 0.001) {
                 std::cout << "fh->prior == " << EF->frames[h]->prior.transpose() << std::endl;
                 H.diagonal().segment<8>(CPARS + h * 8) += EF->frames[h]->prior;
-                b.segment<8>(CPARS + h * 8) += EF->frames[h]->prior.cwiseProduct(EF->frames[h]->delta_prior);
+                b.segment<8>(CPARS + h * 8) +=
+                        EF->frames[h]->prior.cwiseProduct(EF->frames[h]->delta_prior);
 
 #ifdef NEW_METHOD
-                if (EF->frames[h]->prior(6) > 0.001) {
-                    std::cout << "fh->prior == " << EF->frames[h]->prior.transpose() << std::endl;
-                    EF->add_lambda_frame(J_temp, r_temp, h,
+//                std::cout << "fh->prior == " << EF->frames[h]->prior.transpose() << std::endl;
+                EF->add_lambda_frame(J_temp, r_temp, h,
                                          EF->frames[h]->prior_new_method,
+//                                         EF->frames[h]->prior,
                                          EF->frames[h]->delta_prior.cast<rkf_scalar>());
-                }
+
+//                EF->Js.push_back(J_temp);
+//                EF->rs.push_back(r_temp);
 #endif
             }
 
@@ -528,6 +539,12 @@ void AccumulatedTopHessianSSE::stitchDouble(MatXX &H, VecX &b, EnergyFunctional 
 #ifdef NEW_METHOD
         EF->Js.push_back(J_temp);
         EF->rs.push_back(r_temp);
+//        std::cout << "J_temp:\n" << J_temp << std::endl;
+//        std::cout << "r_temp:\n" << r_temp.transpose() << std::endl;
+//        std::cout << (J_temp.transpose() * J_temp).ldlt().solve(J_temp.transpose() * r_temp).transpose()
+//                << std::endl;
+//        std::cout << H.ldlt().solve(b).transpose() << std::endl;
+//        std::cout << "........" << std::endl;
 #endif
 
     }

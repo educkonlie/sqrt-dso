@@ -288,11 +288,12 @@ namespace dso {
         J.conservativeResize(J.rows() + 8, J.cols());
         r.conservativeResize(r.rows() + 8);
 //    J.bottomRows(8) = MatXX::Zero(8, J.cols());
-        J.bottomRows(8).setZero();
-        r.bottomRows(8).setZero();
+        J.bottomRows(8) = MatXXc::Zero(8, J.cols());
+        r.bottomRows(8) = VecXc::Zero(8);
         //! 底下idx对应的8行8列设置为Lambda，r底下设置为 Lambda * alpha
         J.block(old_rows, CPARS + idx * 8, 8, 8) = Lambda.asDiagonal();
         r.bottomRows(8) = Lambda.asDiagonal() * alpha;
+//        r.bottomRows(8) = Lambda.cwiseProduct(alpha);
     }
 #if 0
     void EnergyFunctional::test_marg_frame() {
