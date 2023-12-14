@@ -54,9 +54,11 @@ void EFFrame::takeData()
 #ifdef NEW_METHOD
 //    prior_new_method = prior.cast<rkf_scalar>().sqrt();
     for (int i = 0; i < prior.rows(); i++)
-        prior_new_method(i) = sqrt(prior(i));
-    std::cout << "prior           : " << prior.transpose() << std::endl;
-    std::cout << "prior_new_method: " << prior_new_method.transpose() << std::endl;
+        prior_new_method(i) = std::sqrt(prior(i));
+    if (prior(6) > 0.001) {
+        std::cout << "prior           : " << prior.transpose() << std::endl;
+        std::cout << "prior_new_method: " << prior_new_method.transpose() << std::endl;
+    }
 #endif
     //! 这个delta才是取之前计算得到的值
 //    assert(data->state_zero.head<6>().squaredNorm() < 1e-20);

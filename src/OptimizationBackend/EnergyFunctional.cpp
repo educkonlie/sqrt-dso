@@ -201,6 +201,8 @@ void EnergyFunctional::setDeltaF(CalibHessian* HCalib)
     void EnergyFunctional::accumulateAF_MT(MatXX &H, VecX &b, bool MT)
     {
         accSSE_top_A->setZero(nFrames);
+        Js.clear();
+        rs.clear();
 
 //    std::cout << ".................1........." << std::endl;
         H = MatXX::Zero(accSSE_top_A->nframes[0]*8+CPARS, accSSE_top_A->nframes[0]*8+CPARS);
@@ -655,8 +657,8 @@ void EnergyFunctional::marginalizePointsF()
 //    if (rM.rows() > 10)
 //        std::cout << "rM       :\n" << rM.topRows(10).transpose() << std::endl;
 
-//    std::cout << "after compress JM, rM:\n"
-//            << (JM.transpose() * JM).ldlt().solve(JM.transpose() * rM).transpose() << std::endl;
+    std::cout << "after compress JM, rM:\n"
+            << (JM.transpose() * JM).ldlt().solve(JM.transpose() * rM).transpose() << std::endl;
 
 	resInM+= accSSE_top_A->nres[0];
 
@@ -671,9 +673,9 @@ void EnergyFunctional::marginalizePointsF()
 //        std::cout << "bM       :\n" << bM.topRows(10).transpose() << std::endl;
 //    std::cout << "bM size in marg points: " << bM.size() << std::endl;
 
-//    std::cout << "reference HM, bM:\n"
-//            << HM.ldlt().solve(bM).transpose() << std::endl;
-//    std::cout << std::endl;
+    std::cout << "reference HM, bM:\n"
+            << HM.ldlt().solve(bM).transpose() << std::endl;
+    std::cout << std::endl;
 
 	EFIndicesValid = false;
 	makeIDX();
