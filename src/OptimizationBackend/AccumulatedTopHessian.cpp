@@ -245,6 +245,16 @@ namespace dso
         p->HdiF = 1.0 / Hi;
         p->bdSumF = p->bd_accAF;
 
+//        Eigen::LeastSquaresConjugateGradient<MatXXc > lscg;
+//    lscg.setMaxIterations(100);
+//        lscg.setTolerance(1e-8);
+//        lscg.compute(p->Jr1);
+//        VecXc y = lscg.solve(p->Jr2);
+//        std::cout << "lscg  x:\n" << y.transpose() << std::endl;
+//        std::cout << "lscg iter:\n" << lscg.iterations() << std::endl;
+//        std::cout
+//                << (p->Jr1.transpose() * p->Jr1).ldlt().solve(p->Jr1.transpose() * p->Jr2).transpose()
+//                << std::endl;
 //        std::cout << "times_ACC1: " << times_ACC1 << std::endl;
 //        std::cout << "times_ACC2: " << times_ACC2 << std::endl;
 //        std::cout << "times_ACC3: " << times_ACC3 << std::endl;
@@ -544,6 +554,14 @@ void AccumulatedTopHessianSSE::stitchDouble(MatXX &H, VecX &b, EnergyFunctional 
 //        std::cout << (J_temp.transpose() * J_temp).ldlt().solve(J_temp.transpose() * r_temp).transpose()
 //                << std::endl;
 //        std::cout << H.ldlt().solve(b).transpose() << std::endl;
+
+//        VecXc x_new;
+//        std::vector<MatXXc> J_temps;
+//        std::vector<VecXc> r_temps;
+//        J_temps.push_back(J_temp);
+//        r_temps.push_back(r_temp);
+//        EF->pcgMT(EF->red, &J_temps, &r_temps, EF, x_new, 1e-8, 100, false);
+//        std::cout << x_new.transpose() << std::endl;
 //        std::cout << "........" << std::endl;
 #endif
 

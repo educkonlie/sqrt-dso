@@ -234,6 +234,8 @@ void EnergyFunctional::setDeltaF(CalibHessian* HCalib)
                     }
                 }
             }
+
+
 //            std::cout << "before stitchDouble:" << std::endl;
 //            std::cout << H1.ldlt().solve(b1).transpose() << std::endl;
 //            MatXXc H2 = MatXXc::Zero(accSSE_top_A->nframes[0]*8+CPARS, accSSE_top_A->nframes[0]*8+CPARS);
@@ -243,6 +245,9 @@ void EnergyFunctional::setDeltaF(CalibHessian* HCalib)
 //                b2 += Js[i].transpose() * rs[i];
 //            }
 //            std::cout << H2.ldlt().solve(b2).transpose() << std::endl;
+//            VecXc x_new;
+//            pcgMT(red, &Js, &rs, this, x_new, 1e-8, 100, false);
+//            std::cout << x_new.transpose() << std::endl;
 
 //            auto times_addPoint = timer_addPoint.toc();
 //            std::cout << "addPoint cost time " << times_addPoint << std::endl;
@@ -674,8 +679,9 @@ void EnergyFunctional::marginalizePointsF()
     for (EFPoint *p : allPointsToMarg) {
         removePoint(p);
     }
-    std::cout << "before compress JM, rM:\n"
-              << (JM.transpose() * JM).ldlt().solve(JM.transpose() * rM).transpose() << std::endl;
+//    std::cout << "before compress JM, rM:\n"
+//              << (JM.transpose() * JM).ldlt().solve(JM.transpose() * rM).transpose() << std::endl;
+
 
     compress_Jr(JM, rM);
 
@@ -685,8 +691,19 @@ void EnergyFunctional::marginalizePointsF()
 //    if (rM.rows() > 10)
 //        std::cout << "rM       :\n" << rM.topRows(10).transpose() << std::endl;
 
-    std::cout << "after compress JM, rM:\n"
-            << (JM.transpose() * JM).ldlt().solve(JM.transpose() * rM).transpose() << std::endl;
+//    std::cout << "after compress JM, rM:\n"
+//            << (JM.transpose() * JM).ldlt().solve(JM.transpose() * rM).transpose() << std::endl;
+
+//    VecXc x_new;
+//    std::vector<MatXXc > JMs;
+//    std::vector<VecXc > rMs;
+//    JMs.push_back(JM);
+//    rMs.push_back(rM);
+//    pcgMT(red, &JMs, &rMs, this, x_new, 1e-8, 100, false);
+//    if (JM.rows() > 0) {
+//        cg(JM, rM, x_new, 1e-8, JM.cols());
+//        std::cout << "cg:\n" << x_new.transpose() << std::endl;
+//    }
 
 	resInM+= accSSE_top_A->nres[0];
 
@@ -701,9 +718,9 @@ void EnergyFunctional::marginalizePointsF()
 //        std::cout << "bM       :\n" << bM.topRows(10).transpose() << std::endl;
 //    std::cout << "bM size in marg points: " << bM.size() << std::endl;
 
-    std::cout << "reference HM, bM:\n"
-            << HM.ldlt().solve(bM).transpose() << std::endl;
-    std::cout << std::endl;
+//    std::cout << "reference HM, bM:\n"
+//            << HM.ldlt().solve(bM).transpose() << std::endl;
+//    std::cout << std::endl;
 
 	EFIndicesValid = false;
 	makeIDX();
@@ -829,13 +846,16 @@ void EnergyFunctional::solveSystemF(int iteration, double lambda, CalibHessian* 
 
 //    MatXXc H_rkf = MatXXc::Zero(CPARS + nFrames * 8, CPARS + nFrames * 8);
 //    VecX b_rkf = VecX::Zero(CPARS + nFrames * 8);
-//
+
 //    for (int i = 0; i < Js.size(); i++) {
 //        H_rkf += Js[i].transpose() * Js[i];
 //        b_rkf += Js[i].transpose() * rs[i];
 //    }
 
 //    std::cout << "rkf 112" << std::endl;
+//    VecXc x_new;
+//    pcgMT(red, &Js, &rs, this, x_new, 1e-10, 100, false);
+//    std::cout << x_new.transpose() << std::endl;
 //    std::cout << (H_rkf.transpose() * H_rkf).ldlt().solve(H_rkf.transpose() * b_rkf).transpose()
 //            << std::endl;
 //    std::cout << (HA_top.transpose() * HA_top).ldlt().solve(HA_top.transpose() * bA_top).transpose()
@@ -867,8 +887,36 @@ void EnergyFunctional::solveSystemF(int iteration, double lambda, CalibHessian* 
 #endif
 //    std::cout << "getStitchedDeltaF(): " << getStitchedDeltaF() << std::endl;
 
-    VecXc x_new;
-    pcgMT(red, Js, rs, this, x_new, 1e-10, 100, false);
+    int total = 0;
+    for (int i = 0; i < Js.size(); i++) {
+        total += Js[i].rows();
+    }
+    MatXXc JJ = MatXXc::Zero(total, Js[0].cols());
+    VecXc rr = VecXc::Zero(total);
+    int m = 0;
+    for (int i = 0; i < Js.size(); i++) {
+        JJ.middleRows(m, Js[i].rows()) = Js[i];
+        rr.middleRows(m, rs[i].rows()) = rs[i];
+        m += rs[i].rows();
+    }
+
+//    VecXc x_new;
+//    pcgMT(red, &Js, &rs, this, x_new, 1e-10, 100, false);
+
+//    compress_Jr(JJ, rr);
+
+#if 1
+    Eigen::LeastSquaresConjugateGradient<MatXXc > lscg;
+    lscg.setMaxIterations(200);
+    lscg.setTolerance(1e-6);
+    lscg.compute(JJ);
+    VecXc y = lscg.solve(rr);
+    std::cout << "lscg  x:\n" << y.transpose() << std::endl;
+    std::cout << "lscg iter:\n" << lscg.iterations() << std::endl;
+#endif
+//    y.setZero();
+//    pcg(JJ, rr, y, 1e-6, 200);
+//    std::cout << "pcg   x:\n" << y.transpose() << std::endl;
 
 	MatXX HFinal_top;
 	VecX bFinal_top;
@@ -928,19 +976,19 @@ void EnergyFunctional::solveSystemF(int iteration, double lambda, CalibHessian* 
 		x = SVecI.asDiagonal() * HFinalScaled.ldlt().solve(SVecI.asDiagonal() * bFinal_top);//  SVec.asDiagonal() * svd.matrixV() * Ub;
 	}
 
-    std::cout << "x_new: " << x_new.transpose() << std::endl;
-    std::cout << "x_old: " << HFinal_top.ldlt().solve(bFinal_top).transpose() << std::endl;
-//    std::cout << "x_4th: " << x.transpose() << std::endl;
+//    std::cout << "x_new: " << x_new.transpose() << std::endl;
+//    std::cout << "x_old: " << HFinal_top.ldlt().solve(bFinal_top).transpose() << std::endl;
+    std::cout <<   "x    : " << x.transpose() << std::endl;
 
-    MatXXc H_rkf2 = MatXXc::Zero(CPARS + nFrames * 8, CPARS + nFrames * 8);
-    VecX b_rkf2 = VecX::Zero(CPARS + nFrames * 8);
-
-    for (int i = 0; i < Js.size(); i++) {
-        H_rkf2 += Js[i].transpose() * Js[i];
-        b_rkf2 += Js[i].transpose() * rs[i];
-    }
-    std::cout << "x_3rd: " << H_rkf2.ldlt().solve(b_rkf2).transpose() << std::endl;
-    std::cout << std::endl;
+//    MatXXc H_rkf2 = MatXXc::Zero(CPARS + nFrames * 8, CPARS + nFrames * 8);
+//    VecX b_rkf2 = VecX::Zero(CPARS + nFrames * 8);
+//
+//    for (int i = 0; i < Js.size(); i++) {
+//        H_rkf2 += Js[i].transpose() * Js[i];
+//        b_rkf2 += Js[i].transpose() * rs[i];
+//    }
+//    std::cout << "x_3rd: " << H_rkf2.ldlt().solve(b_rkf2).transpose() << std::endl;
+//    std::cout << std::endl;
 
 	if((setting_solverMode & SOLVER_ORTHOGONALIZE_X) ||
             (iteration >= 2 &&
