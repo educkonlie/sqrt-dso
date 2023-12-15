@@ -213,32 +213,29 @@ namespace dso {
     }
     void EnergyFunctional::cg_orig(MatXXc &A, VecXc &b, VecXc &x, rkf_scalar tor, int maxiter)
     {
+        int i = 0;
         x = VecXc::Zero(A.cols());
-//        VecXc r = A.transpose() * b;
-        VecXc r = b;
-        VecXc q = r;
-        rkf_scalar rr_old = r.transpose() * r;
-        for (int i = 0; i < maxiter; i++) {
-            VecXc AAq = A * q;
+        VecXc r = b - A * x;
+        VecXc d = r;
+        rkf_scalar delta_new = r.transpose() * r;
+        rkf_scalar delta_0 = delta_new;
+        rkf_scalar delta_old;
+        rkf_scalar alpha;
+        rkf_scalar beta;
+        while (i < maxiter && delta_new > tor * tor * delta_0) {
+            VecXc q = A * d;
+            alpha = delta_new / (d.transpose() * q);
+            x = x + alpha * d;
+            if (i % 50 == 0)
+                r = b - A * x;
+            else
+                r = r - alpha * q;
+            delta_old = delta_new;
+            delta_new = r.transpose() * r;
 
-            rkf_scalar alpha = rr_old / (q.transpose() * AAq);
-            x = x + alpha * q;
-            r = r - alpha * AAq;
-            rkf_scalar rr_new = r.transpose() * r;
-//            assert(rr_new >= 0);
-
-            std::cout << "cg rr_new: " << rr_new << std::endl;
-            if (std::sqrt(rr_new) < tor) {
-                std::cout << "iter: " << i << std::endl;
-                break;
-            }
-//            if (rr_new > rr_old) {
-//                std::cout << "rr_new > rr_old" << std::endl;
-//                break;
-//            }
-
-            q = r + (rr_new / rr_old) * q;
-            rr_old = rr_new;
+            std::cout << "cg delta_new: " << delta_new << std::endl;
+            beta = delta_new / delta_old;
+            d = r + beta * d;
         }
     }
     void EnergyFunctional::pcg(MatXXc &A, VecXc &b, VecXc &x, rkf_scalar tor, int maxiter)
