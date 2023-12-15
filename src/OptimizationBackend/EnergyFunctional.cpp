@@ -213,9 +213,9 @@ void EnergyFunctional::setDeltaF(CalibHessian* HCalib)
         rs.clear();
 
 //    std::cout << ".................1........." << std::endl;
+
         H = MatXX::Zero(accSSE_top_A->nframes[0]*8+CPARS, accSSE_top_A->nframes[0]*8+CPARS);
         b = VecX::Zero(accSSE_top_A->nframes[0] * 8+CPARS);
-
         MatXXc H1 = MatXXc::Zero(accSSE_top_A->nframes[0]*8+CPARS, accSSE_top_A->nframes[0]*8+CPARS);
         VecXc b1 = VecXc::Zero(accSSE_top_A->nframes[0] * 8+CPARS);
 
@@ -258,8 +258,10 @@ void EnergyFunctional::setDeltaF(CalibHessian* HCalib)
 //            auto times_stitchDouble = timer_stitchDouble.toc();
 //            std::cout << "stitchDouble cost time " << times_stitchDouble << std::endl;
         }
+#ifndef NEW_METHOD
         H += H1.cast<myscalar>();
         b += b1.cast<myscalar>();
+#endif
 
 //        std::cout << "after stitchDouble:" << std::endl;
 //        std::cout << H.ldlt().solve(b).transpose() << std::endl;
@@ -388,12 +390,14 @@ EFFrame* EnergyFunctional::insertFrame(FrameHessian* fh, CalibHessian* Hcalib)
 	eff_right->idx = frames.size()+1000000;
 	fh->frame_right->efFrame = eff_right;
 
+#ifndef NEW_METHOD
 	assert(HM.cols() == 8*nFrames+CPARS-8);
 	bM.conservativeResize(8*nFrames+CPARS);
 	HM.conservativeResize(8*nFrames+CPARS,8*nFrames+CPARS);
 	bM.tail<8>().setZero();
 	HM.rightCols<8>().setZero();
 	HM.bottomRows<8>().setZero();
+#endif
 #ifdef NEW_METHOD
     //! 新加入一帧，会给列扩容
     JM.conservativeResize(JM.rows(), 8 * nFrames + CPARS);
@@ -489,14 +493,14 @@ void EnergyFunctional::marginalizeFrame(EFFrame* fh)
 //        exit(0);
     }
 #endif
-
+    std::cout << "marg frame: " << fh->idx << std::endl;
+#ifndef NEW_METHOD
 	int ndim = nFrames*8+CPARS-8;// new dimension
 	int odim = nFrames*8+CPARS;// old dimension
 
 //	VecX eigenvaluesPre = HM.eigenvalues().real();
 //	std::sort(eigenvaluesPre.data(), eigenvaluesPre.data()+eigenvaluesPre.size());
 //
-//    std::cout << "marg frame: " << fh->idx << std::endl;
 
     //! 如果fh的index不是frames的最后一个
 	if((int)fh->idx != (int)frames.size()-1) {
@@ -530,19 +534,16 @@ void EnergyFunctional::marginalizeFrame(EFFrame* fh)
     bM.tail<8>() += fh->prior.cwiseProduct(fh->delta_prior);
 //    assert(fh->prior.asDiagonal() * fh->delta_prior
 //           == fh->prior.cwiseProduct(fh->delta_prior));
-    //! 只有DSO碰到的第一帧会有fh->prior，需要特别加成
-//    std::cout << "fh->prior fh->delta_prior:\n" << fh->prior.transpose() << "\n"
-//            << fh->delta_prior.transpose() << std::endl;
 
-
+#endif
+//    ! 只有DSO碰到的第一帧会有fh->prior，需要特别加成
+    std::cout << "fh->prior fh->delta_prior:\n" << fh->prior.transpose() << "\n"
+            << fh->delta_prior.transpose() << std::endl;
 
 //!  边缘化目标帧
 #ifdef NEW_METHOD
-//    if((int)fh->idx != (int)frames.size()-1) {
-        marg_frame(JM, rM, fh->idx);
-//    }
-#endif
-
+    marg_frame(JM, rM, fh->idx);
+#else
 //	std::cout << std::setprecision(16) << "HMPre:\n" << HM << "\n\n";
 
 	VecX SVec = (HM.diagonal().cwiseAbs()+VecX::Constant(HM.cols(), 10)).cwiseSqrt();
@@ -587,9 +588,7 @@ void EnergyFunctional::marginalizeFrame(EFFrame* fh)
 
 //    std::cout << "bM: " << bM.size() << std::endl;
 //    std::cout << "bMScaled: " << bMScaled.size() << std::endl;
-#ifdef NEW_METHOD
-//! 去掉最后八列，去掉最上面八行（包括rM的最上面八行），
-//! 然后择机执行压缩（所谓的压缩就是做一次全列的QR分解，将底下为0的行全部删掉）
+
 #endif
 
 	// remove from vector, without changing the order!
@@ -602,18 +601,12 @@ void EnergyFunctional::marginalizeFrame(EFFrame* fh)
     //! 这里是让efFrame从上级的FrameHessian中脱钩，然后在本函数的末尾会delete fh
     fh->data->efFrame = 0;
 
+#ifndef NEW_METHOD
 	assert((int)frames.size()*8+CPARS == (int)HM.rows());
 	assert((int)frames.size()*8+CPARS == (int)HM.cols());
 	assert((int)frames.size()*8+CPARS == (int)bM.size());
 	assert((int)frames.size() == (int)nFrames);
-
-//	VecX eigenvaluesPost = HM.eigenvalues().real();
-//	std::sort(eigenvaluesPost.data(), eigenvaluesPost.data()+eigenvaluesPost.size());
-
-//	std::cout << std::setprecision(16) << "HMPost:\n" << HM << "\n\n";
-
-//	std::cout << "EigPre:: " << eigenvaluesPre.transpose() << "\n";
-//	std::cout << "EigPost: " << eigenvaluesPost.transpose() << "\n";
+#endif
 
 	EFIndicesValid = false;
 	EFAdjointsValid=false;
@@ -707,12 +700,14 @@ void EnergyFunctional::marginalizePointsF()
 
 	resInM+= accSSE_top_A->nres[0];
 
+#ifndef NEW_METHOD
 	MatXX H = M.cast<myscalar>();
     VecX b = Mb.cast<myscalar>();
     // 每一个点都对应一个完整的H, b。或者说，Marg: point -> (H_nxn, b_n)
     //! 点删掉了，但是相应的约束信息整合到HM，bM里了。
 	HM += setting_margWeightFac*H;
 	bM += setting_margWeightFac*b;
+#endif
 
 //    if (bM.rows() > 10)
 //        std::cout << "bM       :\n" << bM.topRows(10).transpose() << std::endl;
@@ -871,7 +866,9 @@ void EnergyFunctional::solveSystemF(int iteration, double lambda, CalibHessian* 
     //! 即回退到了zero点，制作了HM，bM;
     //! 之后应该是在前端一直保存了zero点，所以每次要使用这个祖传HM, bM的时候，都需要现求一次state - state_zero
     //! 然后将这个bM调整如下
+#ifndef NEW_METHOD
 	bM_top = (bM+ HM * getStitchedDeltaF());
+#endif
 #ifdef NEW_METHOD
     VecXc rM_top;
     if (JM.rows() > 0) {
@@ -903,21 +900,26 @@ void EnergyFunctional::solveSystemF(int iteration, double lambda, CalibHessian* 
 //    VecXc x_new;
 //    pcgMT(red, &Js, &rs, this, x_new, 1e-10, 100, false);
 
-//    compress_Jr(JJ, rr);
+    compress_Jr(JJ, rr);
 
 #if 1
     Eigen::LeastSquaresConjugateGradient<MatXXc > lscg;
-    lscg.setMaxIterations(200);
-    lscg.setTolerance(1e-6);
+    lscg.setMaxIterations(5);
+    lscg.setTolerance(1e-8);
     lscg.compute(JJ);
     VecXc y = lscg.solve(rr);
-    std::cout << "lscg  x:\n" << y.transpose() << std::endl;
-    std::cout << "lscg iter:\n" << lscg.iterations() << std::endl;
+//    std::cout << "lscg  x:\n" << y.transpose() << std::endl;
+//    std::cout << "lscg iter: " << lscg.iterations() << std::endl;
+//    std::cout << "JJ cols:   " << JJ.cols() << std::endl;
+#else
+    VecXc y;
+    y = (JJ.transpose() * JJ).ldlt().solve(JJ.transpose() * rr);
 #endif
 //    y.setZero();
 //    pcg(JJ, rr, y, 1e-6, 200);
 //    std::cout << "pcg   x:\n" << y.transpose() << std::endl;
 
+#ifndef NEW_METHOD
 	MatXX HFinal_top;
 	VecX bFinal_top;
 
@@ -989,7 +991,11 @@ void EnergyFunctional::solveSystemF(int iteration, double lambda, CalibHessian* 
 //    }
 //    std::cout << "x_3rd: " << H_rkf2.ldlt().solve(b_rkf2).transpose() << std::endl;
 //    std::cout << std::endl;
+#endif
 
+#ifdef NEW_METHOD
+    VecX x = y.cast<double>();
+#endif
 	if((setting_solverMode & SOLVER_ORTHOGONALIZE_X) ||
             (iteration >= 2 &&
                     (setting_solverMode & SOLVER_ORTHOGONALIZE_X_LATER))) {

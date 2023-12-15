@@ -223,10 +223,12 @@ namespace dso
         assert(p->Jr1.rows() == 8 * k - 1);
 
         assert(p->Jr1.rows() > 0);
+#ifndef NEW_METHOD
         H1 += (p->Jr1.transpose() * p->Jr1);
 //        H1 += (Jr1.transpose() * Jr1);
         b1 += (p->Jr1.transpose() * p->Jr2);
 //        b1 += (Jr1.transpose() * Jr2);
+#endif
         if (mode == 2) {
             //! 将所有的Jr1, Jr2合并入ef->JM, ef->rM
         }

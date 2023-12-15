@@ -116,14 +116,14 @@ void settingsDefault(int preset)
 //        setting_desiredPointDensity = 6000;
 //        setting_desiredPointDensity = 12000;
 
-		setting_minFrames = 5;
+//		setting_minFrames = 5;
 //        setting_minFrames = 3;
-//        setting_minFrames = 10;
+        setting_minFrames = 10;
 //        setting_minFrames = 150;
 
-		setting_maxFrames = 7;
+//		setting_maxFrames = 7;
 //        setting_maxFrames = 4;
-//        setting_maxFrames = 14;
+        setting_maxFrames = 15;
 //        setting_maxFrames = 210;
 
 		setting_maxOptIterations=6;
