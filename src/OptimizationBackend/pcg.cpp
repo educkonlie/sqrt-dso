@@ -116,20 +116,26 @@ namespace dso {
                                  VecXc &x, rkf_scalar tor, int maxiter, bool MT)
     {
         x = VecXc::Zero((*A)[0].cols());
-        VecXc lambda = VecXc::Zero((*A)[0].cols());
+        VecXc lambda_inv = VecXc::Zero((*A)[0].cols());
         VecXc r = VecXc::Zero((*A)[0].cols());
 
         for (int j = 0; j < (*A).size(); j++) {
             for (int i = 0; i < (*A)[0].cols(); i++)
-                lambda(i) = lambda(i) + ((*A)[j].col(i).transpose() * (*A)[j].col(i));
-            r = r + (*A)[j].transpose() * (*b)[j];
+                lambda_inv(i) += ((*A)[j].col(i).transpose() * (*A)[j].col(i));
+            r += (*A)[j].transpose() * (*b)[j];
         }
-        for (int i = 0; i < (*A)[0].cols(); i++)
-            lambda(i) = 1.0 / lambda(i);
+        VecXc lambda = VecXc::Zero((*A)[0].cols());
+        for (int i = 0; i < (*A)[0].cols(); i++) {
+            lambda(i) = 1.0 / lambda_inv(i);
+        }
+//        std::cout << lambda.asDiagonal() * (lambda_inv.asDiagonal().toDenseMatrix()) << std::endl;
+//        std::cout << lambda_inv.asDiagonal() << std::endl;
+//        exit(0);
 
         r = lambda.asDiagonal() * r;
         VecXc q = r;
         rkf_scalar rr_old = r.transpose() * r;
+//        std::cout << "rr_old: " << rr_old << std::endl;
 
         for (int i = 0; i < maxiter; i++) {
             VecXc AAq = VecXc::Zero((*A)[0].cols());
@@ -157,16 +163,20 @@ namespace dso {
             r = r - alpha * AAq;
             rkf_scalar rr_new = r.transpose() * r;
 
-            if (std::sqrt(rr_new) < tor) {
+//            std::cout << "rr_new: " << rr_new << std::endl;
+
+//            if (std::sqrt(rr_new) < tor) {
+            if (std::sqrt(rr_new) < tor * std::sqrt(rr_new)) {
                 std::cout << "iter: " << i << std::endl;
                 break;
             }
-
+            if (rr_new > rr_old) {
+                x = x - alpha * q;
+                break;
+            }
             q = r + (rr_new / rr_old) * q;
             rr_old = rr_new;
         }
-
-        std::cout << "maxiter: " << maxiter << std::endl;
     }
     void EnergyFunctional::cg(MatXXc &A, VecXc &b, VecXc &x, rkf_scalar tor, int maxiter)
     {
@@ -174,6 +184,7 @@ namespace dso {
         VecXc r = A.transpose() * b;
         VecXc q = r;
         rkf_scalar rr_old = r.transpose() * r;
+        double real_tor = tor * tor * rr_old;
         for (int i = 0; i < maxiter; i++) {
             VecXc Aq = A * q;
             VecXc AAq = A.transpose() * Aq;
@@ -183,49 +194,89 @@ namespace dso {
             x = x + alpha * q;
             r = r - alpha * AAq;
             rkf_scalar rr_new = r.transpose() * r;
-            assert(rr_new >= 0);
+//            assert(rr_new >= 0);
 
-            if (std::sqrt(rr_new) < tor) {
+            std::cout << "cg rr_new: " << rr_new << std::endl;
+//            if (std::sqrt(rr_new) < tor) {
+            if (rr_new < real_tor) {
                 std::cout << "iter: " << i << std::endl;
                 break;
             }
+//            if (rr_new > rr_old) {
+//                std::cout << "rr_new > rr_old" << std::endl;
+//                break;
+//            }
 
             q = r + (rr_new / rr_old) * q;
             rr_old = rr_new;
         }
-        std::cout << "maxiter: " << maxiter << std::endl;
+    }
+    void EnergyFunctional::cg_orig(MatXXc &A, VecXc &b, VecXc &x, rkf_scalar tor, int maxiter)
+    {
+        x = VecXc::Zero(A.cols());
+//        VecXc r = A.transpose() * b;
+        VecXc r = b;
+        VecXc q = r;
+        rkf_scalar rr_old = r.transpose() * r;
+        for (int i = 0; i < maxiter; i++) {
+            VecXc AAq = A * q;
+
+            rkf_scalar alpha = rr_old / (q.transpose() * AAq);
+            x = x + alpha * q;
+            r = r - alpha * AAq;
+            rkf_scalar rr_new = r.transpose() * r;
+//            assert(rr_new >= 0);
+
+            std::cout << "cg rr_new: " << rr_new << std::endl;
+            if (std::sqrt(rr_new) < tor) {
+                std::cout << "iter: " << i << std::endl;
+                break;
+            }
+//            if (rr_new > rr_old) {
+//                std::cout << "rr_new > rr_old" << std::endl;
+//                break;
+//            }
+
+            q = r + (rr_new / rr_old) * q;
+            rr_old = rr_new;
+        }
     }
     void EnergyFunctional::pcg(MatXXc &A, VecXc &b, VecXc &x, rkf_scalar tor, int maxiter)
     {
-        x = VecX::Zero(A.cols());
-        VecX lambda = VecX::Zero(A.cols());
+        x = VecXc::Zero(A.cols());
+        VecXc lambda = VecXc::Zero(A.cols());
         for (int i = 0; i < A.cols(); i++)
             lambda(i) = 1.0 / (A.col(i).transpose() * A.col(i));
 
-        VecX r =  (A.transpose() * b);
+        VecXc r =  (A.transpose() * b);
 
         r = lambda.asDiagonal() * r;
 
-        VecX q = r;
+        VecXc q = r;
         rkf_scalar rr_old = r.transpose() * r;
 
-        for (int i = 0; i < maxiter; i++) {
-            VecX AAq = lambda.asDiagonal() * (A.transpose() * (A * q));
+        int i = 0;
+        for (i = 0; i < maxiter; i++) {
+            VecXc AAq = lambda.asDiagonal() * (A.transpose() * (A * q));
 
             rkf_scalar alpha = rr_old / (q.transpose() * AAq);
-            x += alpha * q;
-            r -= alpha * AAq;
+            x = x + alpha * q;
+            r = r - alpha * AAq;
             rkf_scalar rr_new = r.transpose() * r;
 
-            if (std::sqrt(rr_new) < tor) {
+            std::cout << "pcg rr_new: " << rr_new << std::endl;
+            if (std::sqrt(rr_new) < tor * std::sqrt(rr_new)) {
                 std::cout << "iter: " << i << std::endl;
                 break;
+            }
+            if (rr_new > rr_old) {
+                std::cout << "                rr_new > rr_old" << std::endl;
+//                break;
             }
 
             q = r + (rr_new / rr_old) * q;
             rr_old = rr_new;
         }
-
-        std::cout << "maxiter: " << maxiter << std::endl;
+        std::cout << "break iter: " << i << std::endl;
     }
 }

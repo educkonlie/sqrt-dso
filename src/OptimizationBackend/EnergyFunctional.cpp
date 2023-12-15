@@ -212,19 +212,12 @@ void EnergyFunctional::setDeltaF(CalibHessian* HCalib)
         Js.clear();
         rs.clear();
 
-//    std::cout << ".................1........." << std::endl;
-
-        H = MatXX::Zero(accSSE_top_A->nframes[0]*8+CPARS, accSSE_top_A->nframes[0]*8+CPARS);
-        b = VecX::Zero(accSSE_top_A->nframes[0] * 8+CPARS);
-        MatXXc H1 = MatXXc::Zero(accSSE_top_A->nframes[0]*8+CPARS, accSSE_top_A->nframes[0]*8+CPARS);
-        VecXc b1 = VecXc::Zero(accSSE_top_A->nframes[0] * 8+CPARS);
-
         {
 //            TicToc timer_addPoint;
             int total_rows = 0;
             for (EFFrame *f: frames) {
                 for (EFPoint *p: f->points) {
-                    accSSE_top_A->addPoint<0>(H1, b1, p, this, 0);
+                    accSSE_top_A->addPoint<0>(p, this, 0);
                     total_rows += p->Jr1.rows();
                     if (p->Jr1.rows() > 0) {
                         Js.push_back(p->Jr1);
@@ -254,7 +247,7 @@ void EnergyFunctional::setDeltaF(CalibHessian* HCalib)
         }
         {
 //            TicToc timer_stitchDouble;
-            accSSE_top_A->stitchDouble(H, b, this, true, true);
+            accSSE_top_A->stitchDouble(this, true, true);
 //            auto times_stitchDouble = timer_stitchDouble.toc();
 //            std::cout << "stitchDouble cost time " << times_stitchDouble << std::endl;
         }
@@ -472,25 +465,18 @@ void EnergyFunctional::marginalizeFrame(EFFrame* fh)
     if (fh->prior(6) > 0.001) {
         std::cout << "JM, rM:\n"
                   << (JM.transpose() * JM).ldlt().solve(JM.transpose() * rM).transpose() << std::endl;
-        std::cout << "HM, bM:\n"
-                  << HM.ldlt().solve(bM).transpose() << std::endl;
+//        std::cout << "HM, bM:\n"
+//                  << HM.ldlt().solve(bM).transpose() << std::endl;
         //!void add_lambda_frame(MatXXc &J, VecXc &r, int idx, Vec8c Lambda, Vec8c alpha);
         add_lambda_frame(JM, rM, fh->idx,
                          fh->prior_new_method,
                          fh->delta_prior.cast<rkf_scalar>());
-        std::cout << "marg frame: " << fh->idx << std::endl;
-        std::cout << "fh->prior fh->delta_prior:\n" << fh->prior.transpose() << "\n"
-                  << fh->delta_prior.transpose() << std::endl;
+//        std::cout << "marg frame: " << fh->idx << std::endl;
+//        std::cout << "fh->prior fh->delta_prior:\n" << fh->prior.transpose() << "\n"
+//                  << fh->delta_prior.transpose() << std::endl;
 
-        std::cout << "JM:\n" << JM << std::endl;
-        std::cout << "rM:\n" << rM.transpose() << std::endl;
-//        marg_frame(JM, rM, fh->idx);
 //        std::cout << "JM:\n" << JM << std::endl;
 //        std::cout << "rM:\n" << rM.transpose() << std::endl;
-
-//        std::cout << "JM, rM:\n"
-//                  << (JM.transpose() * JM).ldlt().solve(JM.transpose() * rM).transpose() << std::endl;
-//        exit(0);
     }
 #endif
     std::cout << "marg frame: " << fh->idx << std::endl;
@@ -537,8 +523,8 @@ void EnergyFunctional::marginalizeFrame(EFFrame* fh)
 
 #endif
 //    ! 只有DSO碰到的第一帧会有fh->prior，需要特别加成
-    std::cout << "fh->prior fh->delta_prior:\n" << fh->prior.transpose() << "\n"
-            << fh->delta_prior.transpose() << std::endl;
+//    std::cout << "fh->prior fh->delta_prior:\n" << fh->prior.transpose() << "\n"
+//            << fh->delta_prior.transpose() << std::endl;
 
 //!  边缘化目标帧
 #ifdef NEW_METHOD
@@ -638,8 +624,8 @@ void EnergyFunctional::marginalizePointsF()
 	}
 //    std::cout << "allPointsToMarg.size(): " << allPointsToMarg.size() << std::endl;
 
-    MatXXc M = MatXXc::Zero(accSSE_top_A->nframes[0]*8+CPARS, accSSE_top_A->nframes[0]*8+CPARS);
-    VecXc Mb = VecXc::Zero(accSSE_top_A->nframes[0] * 8+CPARS);
+//    MatXXc M = MatXXc::Zero(accSSE_top_A->nframes[0]*8+CPARS, accSSE_top_A->nframes[0]*8+CPARS);
+//    VecXc Mb = VecXc::Zero(accSSE_top_A->nframes[0] * 8+CPARS);
 #ifdef NEW_METHOD
 #endif
 
@@ -650,7 +636,7 @@ void EnergyFunctional::marginalizePointsF()
 
     int total_rows = 0;
 	for(EFPoint* p : allPointsToMarg) {
-        accSSE_top_A->addPoint<2>(M, Mb, p,this);
+        accSSE_top_A->addPoint<2>( p,this);
         //! 这之前要把marg掉的JM, rM提取出来，否则点删掉了就没了
 //		removePoint(p);
         total_rows += p->Jr1.rows();
@@ -857,11 +843,6 @@ void EnergyFunctional::solveSystemF(int iteration, double lambda, CalibHessian* 
 //            << std::endl;
 #endif
 
-//  跟上次邊緣化的幀無關的points們，加上新補增的points們，計算最新的殘差，SC掉points，生成最新的H, b系統
-#if 0
-	accumulateSCF_MT(H_sc, b_sc,multiThreading);
-#endif
-
     //! 这里的关键是zero点，也就是固定线性化点，之前制作HM, bM的时候，在固定线性化点做了一次优化，然后再回退，
     //! 即回退到了zero点，制作了HM，bM;
     //! 之后应该是在前端一直保存了zero点，所以每次要使用这个祖传HM, bM的时候，都需要现求一次state - state_zero
@@ -884,6 +865,13 @@ void EnergyFunctional::solveSystemF(int iteration, double lambda, CalibHessian* 
 #endif
 //    std::cout << "getStitchedDeltaF(): " << getStitchedDeltaF() << std::endl;
 
+#ifdef NEW_METHOD
+//! 加Damping
+//    MatXXc Damping = 1e-4 * MatXXc::Identity(Js[0].cols(), Js[0].cols());
+//    Js.push_back(Damping);
+//    rs.push_back(VecXc::Zero(Js[0].cols()));
+#endif
+
     int total = 0;
     for (int i = 0; i < Js.size(); i++) {
         total += Js[i].rows();
@@ -897,23 +885,46 @@ void EnergyFunctional::solveSystemF(int iteration, double lambda, CalibHessian* 
         m += rs[i].rows();
     }
 
+//    compress_Jr(JJ, rr);
+//    std::cout << "Js:\n" << Js[Js.size() - 1] << std::endl;
+//    std::cout << "rr:\n" << rs[rs.size() - 1].transpose() << std::endl;
 //    VecXc x_new;
 //    pcgMT(red, &Js, &rs, this, x_new, 1e-10, 100, false);
 
-    compress_Jr(JJ, rr);
+//    compress_Jr(JJ, rr);
 
 #if 1
-    Eigen::LeastSquaresConjugateGradient<MatXXc > lscg;
-    lscg.setMaxIterations(5);
-    lscg.setTolerance(1e-8);
-    lscg.compute(JJ);
-    VecXc y = lscg.solve(rr);
+//    Eigen::LeastSquaresConjugateGradient<MatXXc > lscg;
+//    lscg.setMaxIterations(100);
+//    lscg.setTolerance(1e-10);
+//    lscg.compute(JJ);
+//    VecXc y = lscg.solve(rr);
 //    std::cout << "lscg  x:\n" << y.transpose() << std::endl;
 //    std::cout << "lscg iter: " << lscg.iterations() << std::endl;
+//    std::cout << "lscg error: " << lscg.error() << std::endl;
+
 //    std::cout << "JJ cols:   " << JJ.cols() << std::endl;
+    VecXc y;
+    cg(JJ, rr, y, 1e-6, 10);
+//    MatXXc JJJJ = JJ.transpose() * JJ;
+//    VecXc rrrr = JJ.transpose() * rr;
+//    cg_orig(JJJJ, rrrr, y, 1e-6, 100);
+//    y = JJJJ.ldlt().solve(rrrr);
+//! 可能是没有保证正定的缘故
+//! 可以在sandbox制作一个半正定的矩阵试试
+//    pcgMT(red, &Js, &rs, this, yy, 1e-6, 100, true);
+//    std::cout << "pcgMT x:\n" << yy.transpose() << std::endl;
+//    cg(JJ, rr, yy2, 1e-5, 100);
+//    exit(0);
+
 #else
     VecXc y;
-    y = (JJ.transpose() * JJ).ldlt().solve(JJ.transpose() * rr);
+//    y = (JJ.transpose() * JJ).ldlt().solve(JJ.transpose() * rr);
+//    pcgMT(red, &Js, &rs, this, y, 1e-6, 10, false);
+    assert(JJ.rows() > 0);
+    std::cout << "JJ:\n" << JJ << std::endl;
+    std::cout << "rr:\n" << rr.transpose() << std::endl;
+    pcg(JJ, rr, y, 1e-6, 10);
 #endif
 //    y.setZero();
 //    pcg(JJ, rr, y, 1e-6, 200);

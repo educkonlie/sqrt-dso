@@ -441,10 +441,14 @@ float FullSystem::optimize(int mnumOptIts)
 			lambda *= 1e2;
 		}
 
-		if(canbreak && iteration >= setting_minOptIterations) break;
+		if(canbreak && iteration >= setting_minOptIterations) {
+            std::cout << iteration << std::endl;
+            break;
+        }
 	}
 
 // 	LOG(INFO)<<"optimize for end";
+    std::cout << "optimize for end" << std::endl;
 	Vec10 newStateZero = Vec10::Zero();
 	newStateZero.segment<2>(6) = frameHessians.back()->get_state().segment<2>(6);
 

@@ -76,12 +76,11 @@ public:
 		nres[tid]=0;
 
 	}
-	void stitchDouble(MatXX &H, VecX &b, EnergyFunctional *EF,
+	void stitchDouble(EnergyFunctional *EF,
                       bool usePrior, bool useDelta, int tid=0);
 
 #if 1
-	template<int mode> void addPoint(MatXXc &H1, VecXc &b1,
-                                     EFPoint* p, EnergyFunctional *ef, int tid=0);
+	template<int mode> void addPoint(EFPoint* p, EnergyFunctional *ef, int tid=0);
 #endif
 	int nframes[NUM_THREADS];
 	EIGEN_ALIGN16 AccumulatorApprox* acc[NUM_THREADS];

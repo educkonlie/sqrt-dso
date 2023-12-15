@@ -56,8 +56,7 @@ namespace dso
     double times_ACC5 = 0.0;
 
     template<int mode>
-    void AccumulatedTopHessianSSE::addPoint(MatXXc &H1, VecXc &b1,
-                                            EFPoint* p, EnergyFunctional *ef, int tid)	// 0 = active, 1 = linearized, 2=marginalize
+    void AccumulatedTopHessianSSE::addPoint(EFPoint* p, EnergyFunctional *ef, int tid)	// 0 = active, 1 = linearized, 2=marginalize
     {
         MatXXf Jr1 = MatXXf::Zero(8 * FRAMES, CPARS + 8 * FRAMES);
         VecXf Jr2 = VecXf::Zero(8 * FRAMES);;
@@ -504,39 +503,34 @@ namespace dso
 #endif
 
     template void AccumulatedTopHessianSSE::addPoint<0>
-            (MatXXc &H1, VecXc &b1,
-             EFPoint* p, EnergyFunctional  *ef, int tid);
+            (EFPoint* p, EnergyFunctional  *ef, int tid);
 //template void AccumulatedTopHessianSSE::addPoint<1>(EFPoint* p, EnergyFunctional const * const ef, int tid);
     template void AccumulatedTopHessianSSE::addPoint<2>
-            (MatXXc &H1, VecXc &b1,
-             EFPoint* p, EnergyFunctional  *ef, int tid);
+            (EFPoint* p, EnergyFunctional  *ef, int tid);
 
-void AccumulatedTopHessianSSE::stitchDouble(MatXX &H, VecX &b, EnergyFunctional *EF, bool usePrior, bool useDelta, int tid) {
-    H = MatXX::Zero(nframes[tid] * 8 + CPARS, nframes[tid] * 8 + CPARS);
-    b = VecX::Zero(nframes[tid] * 8 + CPARS);
+void AccumulatedTopHessianSSE::stitchDouble(EnergyFunctional *EF, bool usePrior, bool useDelta, int tid) {
 
     MatXXc J_temp = MatXXc::Zero(CPARS, nframes[tid] * 8 + CPARS);
     VecXc r_temp = VecXc::Zero(CPARS);
 
     if (usePrior) {
         assert(useDelta);
-        H.diagonal().head<CPARS>() += EF->cPrior;
-        b.head<CPARS>() += EF->cPrior.cwiseProduct(EF->cDeltaF.cast<myscalar>());
+//        H.diagonal().head<CPARS>() += EF->cPrior;
+//        b.head<CPARS>() += EF->cPrior.cwiseProduct(EF->cDeltaF.cast<myscalar>());
 #ifdef NEW_METHOD
         J_temp.block(0, 0, CPARS, CPARS)
                 = EF->cPrior_new_method.asDiagonal();
         r_temp = EF->cPrior_new_method.asDiagonal() * (EF->cDeltaF.cast<rkf_scalar>());
-//        r_temp = EF->cPrior_new_method.cwiseProduct(EF->cDeltaF.cast<rkf_scalar>());
 #endif
         for (int h = 0; h < nframes[tid]; h++) {
             if (EF->frames[h]->prior(6) > 0.001) {
-                std::cout << "fh->prior == " << EF->frames[h]->prior.transpose() << std::endl;
-                H.diagonal().segment<8>(CPARS + h * 8) += EF->frames[h]->prior;
-                b.segment<8>(CPARS + h * 8) +=
-                        EF->frames[h]->prior.cwiseProduct(EF->frames[h]->delta_prior);
+//                std::cout << "fh->prior == " << EF->frames[h]->prior.transpose() << std::endl;
+//                H.diagonal().segment<8>(CPARS + h * 8) += EF->frames[h]->prior;
+//                b.segment<8>(CPARS + h * 8) +=
+//                        EF->frames[h]->prior.cwiseProduct(EF->frames[h]->delta_prior);
 
 #ifdef NEW_METHOD
-//                std::cout << "fh->prior == " << EF->frames[h]->prior.transpose() << std::endl;
+                std::cout << "fh->prior == " << EF->frames[h]->prior.transpose() << std::endl;
                 EF->add_lambda_frame(J_temp, r_temp, h,
                                          EF->frames[h]->prior_new_method,
 //                                         EF->frames[h]->prior,
@@ -546,7 +540,6 @@ void AccumulatedTopHessianSSE::stitchDouble(MatXX &H, VecX &b, EnergyFunctional 
 //                EF->rs.push_back(r_temp);
 #endif
             }
-
         }
 #ifdef NEW_METHOD
         EF->Js.push_back(J_temp);
