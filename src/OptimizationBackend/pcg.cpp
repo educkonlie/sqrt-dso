@@ -211,6 +211,7 @@ namespace dso {
             rr_old = rr_new;
         }
     }
+
     void EnergyFunctional::cg_orig(MatXXc &A, VecXc &b, VecXc &x, rkf_scalar tor, int maxiter)
     {
         int i = 0;
@@ -236,6 +237,36 @@ namespace dso {
             std::cout << "cg delta_new: " << delta_new << std::endl;
             beta = delta_new / delta_old;
             d = r + beta * d;
+        }
+    }
+    void EnergyFunctional::pcg_orig(MatXXc &A, VecXc &b, VecXc &x, rkf_scalar tor, int maxiter)
+    {
+        int i = 0;
+        MatXXc M_inv = A.diagonal().asDiagonal().inverse();
+        x = VecXc::Zero(A.cols());
+        VecXc r = b - A * x;
+        VecXc d = M_inv * r;
+        rkf_scalar delta_new = r.transpose() * d;
+        rkf_scalar delta_0 = delta_new;
+        rkf_scalar delta_old;
+        rkf_scalar alpha;
+        rkf_scalar beta;
+        std::cout << "cg delta_0: " << delta_0 << std::endl;
+        while (i < maxiter && delta_new > tor * tor * delta_0) {
+            VecXc q = A * d;
+            alpha = delta_new / (d.transpose() * q);
+            x = x + alpha * d;
+            if (i % 50 == 0)
+                r = b - A * x;
+            else
+                r = r - alpha * q;
+            VecXc s = M_inv * r;
+            delta_old = delta_new;
+            delta_new = r.transpose() * s;
+
+            std::cout << "cg delta_new: " << delta_new << std::endl;
+            beta = delta_new / delta_old;
+            d = s + beta * d;
         }
     }
     void EnergyFunctional::pcg(MatXXc &A, VecXc &b, VecXc &x, rkf_scalar tor, int maxiter)

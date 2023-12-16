@@ -908,7 +908,7 @@ void EnergyFunctional::solveSystemF(int iteration, double lambda, CalibHessian* 
 //    cg(JJ, rr, y, 1e-6, 10);
     MatXXc JJJJ = JJ.transpose() * JJ;
     VecXc rrrr = JJ.transpose() * rr;
-    cg_orig(JJJJ, rrrr, y, 1e-6, 100);
+    pcg_orig(JJJJ, rrrr, y, 1e-6, 100);
 //    y = JJJJ.ldlt().solve(rrrr);
 //! 可能是没有保证正定的缘故
 //! 可以在sandbox制作一个半正定的矩阵试试

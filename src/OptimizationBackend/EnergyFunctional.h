@@ -116,6 +116,7 @@ public:
     void cg(MatXXc &A, VecXc &b, VecXc &x, rkf_scalar tor, int maxiter);
     void cg_orig(MatXXc &A, VecXc &b, VecXc &x, rkf_scalar tor, int maxiter);
     void pcg(MatXXc &A, VecXc &b, VecXc &x, rkf_scalar tor, int maxiter);
+    void pcg_orig(MatXXc &A, VecXc &b, VecXc &x, rkf_scalar tor, int maxiter);
 
     void marg_frame(MatXXc &J, VecXc &r, int idx);
     void no_marg_frame(MatXXc &J, VecXc &r, MatXXc &J_new, VecXc &r_new, int nframes);
