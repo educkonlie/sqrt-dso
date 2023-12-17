@@ -126,6 +126,7 @@ EnergyFunctional::EnergyFunctional()
 #ifdef NEW_METHOD
     JM = MatXXc::Zero(0, CPARS);
     rM = VecXc::Zero(0);
+    num_of_iter = 0;
 #endif
 
 //	accSSE_top_L = new AccumulatedTopHessianSSE();
@@ -463,8 +464,8 @@ void EnergyFunctional::marginalizeFrame(EFFrame* fh)
     //!  JM'.transpose * rM' = JM.transpose * rM + Lambda * (Lambda * alpha)
     //! Lambda^2即prior.asDiagonal()， alpha即delta_prior
     if (fh->prior(6) > 0.001) {
-        std::cout << "JM, rM:\n"
-                  << (JM.transpose() * JM).ldlt().solve(JM.transpose() * rM).transpose() << std::endl;
+//        std::cout << "JM, rM:\n"
+//                  << (JM.transpose() * JM).ldlt().solve(JM.transpose() * rM).transpose() << std::endl;
 //        std::cout << "HM, bM:\n"
 //                  << HM.ldlt().solve(bM).transpose() << std::endl;
         //!void add_lambda_frame(MatXXc &J, VecXc &r, int idx, Vec8c Lambda, Vec8c alpha);
@@ -853,7 +854,7 @@ void EnergyFunctional::solveSystemF(int iteration, double lambda, CalibHessian* 
 #ifdef NEW_METHOD
     VecXc rM_top;
     if (JM.rows() > 0) {
-        rM_top = rM + JM * getStitchedDeltaF();
+        rM_top = rM + JM * getStitchedDeltaF().cast<rkf_scalar>();
         Js.push_back(JM);
         rs.push_back(rM_top);
     } else {
@@ -872,18 +873,18 @@ void EnergyFunctional::solveSystemF(int iteration, double lambda, CalibHessian* 
 //    rs.push_back(VecXc::Zero(Js[0].cols()));
 #endif
 
-    int total = 0;
-    for (int i = 0; i < Js.size(); i++) {
-        total += Js[i].rows();
-    }
-    MatXXc JJ = MatXXc::Zero(total, Js[0].cols());
-    VecXc rr = VecXc::Zero(total);
-    int m = 0;
-    for (int i = 0; i < Js.size(); i++) {
-        JJ.middleRows(m, Js[i].rows()) = Js[i];
-        rr.middleRows(m, rs[i].rows()) = rs[i];
-        m += rs[i].rows();
-    }
+//    int total = 0;
+//    for (int i = 0; i < Js.size(); i++) {
+//        total += Js[i].rows();
+//    }
+//    MatXXc JJ = MatXXc::Zero(total, Js[0].cols());
+//    VecXc rr = VecXc::Zero(total);
+//    int m = 0;
+//    for (int i = 0; i < Js.size(); i++) {
+//        JJ.middleRows(m, Js[i].rows()) = Js[i];
+//        rr.middleRows(m, rs[i].rows()) = rs[i];
+//        m += rs[i].rows();
+//    }
 
 //    compress_Jr(JJ, rr);
 //    std::cout << "Js:\n" << Js[Js.size() - 1] << std::endl;
@@ -906,9 +907,16 @@ void EnergyFunctional::solveSystemF(int iteration, double lambda, CalibHessian* 
 //    std::cout << "JJ cols:   " << JJ.cols() << std::endl;
     VecXc y;
 //    cg(JJ, rr, y, 1e-6, 10);
-    MatXXc JJJJ = JJ.transpose() * JJ;
-    VecXc rrrr = JJ.transpose() * rr;
-    pcg_orig(JJJJ, rrrr, y, 1e-6, 100);
+//    compress_Jr(JJ, rr);
+//    MatXXc JJJJ = JJ.transpose() * JJ;
+//    VecXc rrrr = JJ.transpose() * rr;
+//    y = JJ.householderQr().solve(rr);
+//    pcg_orig(JJJJ, rrrr, y, 1e-3, 100);
+//    leastsquare_pcg_orig(JJ, rr, y, 1e-6, 100);
+
+    leastsquare_pcg_origMT(red, &Js, &rs, this, y, 1e-3, 100, false);
+
+//    std::cout << num_of_iter << std::endl;
 //    y = JJJJ.ldlt().solve(rrrr);
 //! 可能是没有保证正定的缘故
 //! 可以在sandbox制作一个半正定的矩阵试试

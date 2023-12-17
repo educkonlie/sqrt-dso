@@ -530,7 +530,7 @@ void AccumulatedTopHessianSSE::stitchDouble(EnergyFunctional *EF, bool usePrior,
 //                        EF->frames[h]->prior.cwiseProduct(EF->frames[h]->delta_prior);
 
 #ifdef NEW_METHOD
-                std::cout << "fh->prior == " << EF->frames[h]->prior.transpose() << std::endl;
+//                std::cout << "fh->prior == " << EF->frames[h]->prior.transpose() << std::endl;
                 EF->add_lambda_frame(J_temp, r_temp, h,
                                          EF->frames[h]->prior_new_method,
 //                                         EF->frames[h]->prior,

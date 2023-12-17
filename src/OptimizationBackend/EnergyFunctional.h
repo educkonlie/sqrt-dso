@@ -99,6 +99,7 @@ public:
     VecXc rM;
     std::vector<MatXXc> Js;
     std::vector<VecXc> rs;
+    int num_of_iter;
 
     void qr(MatXXc &Jp, MatXXc &Jl);
     void qr2(MatXXc &Jp);
@@ -117,7 +118,13 @@ public:
     void cg_orig(MatXXc &A, VecXc &b, VecXc &x, rkf_scalar tor, int maxiter);
     void pcg(MatXXc &A, VecXc &b, VecXc &x, rkf_scalar tor, int maxiter);
     void pcg_orig(MatXXc &A, VecXc &b, VecXc &x, rkf_scalar tor, int maxiter);
+    void leastsquare_pcg_orig(MatXXc &A, VecXc &b, VecXc &x, rkf_scalar tor, int maxiter);
+    void leastsquare_cg_orig(MatXXc &A, VecXc &b, VecXc &x, rkf_scalar tor, int maxiter);
 
+    void leastsquare_pcg_origMT(IndexThreadReduce<Vec10> *red, std::vector<MatXXc > *A, std::vector<VecXc > *b,
+                                EnergyFunctional const * const EF,
+                                VecXc &x,
+                                rkf_scalar tor, int maxiter, bool MT);
     void marg_frame(MatXXc &J, VecXc &r, int idx);
     void no_marg_frame(MatXXc &J, VecXc &r, MatXXc &J_new, VecXc &r_new, int nframes);
     void compress_Jr(MatXXc &J, VecXc &r);

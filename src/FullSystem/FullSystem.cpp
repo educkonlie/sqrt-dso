@@ -1276,9 +1276,9 @@ void FullSystem::makeKeyFrame( FrameHessian* fh)
     // 优化关键帧组
 
 	fh->frameEnergyTH = frameHessians.back()->frameEnergyTH;
-//    std::cout << "optimize start" << std::endl;
+    std::cout << "optimize start" << std::endl;
 	float rmse = optimize(setting_maxOptIterations);
-//    std::cout << "optimize end" << std::endl;
+    std::cout << "optimize end" << std::endl;
 //    std::cout << "rmse: " << rmse << std::endl;
 
 	// =========================== Figure Out if INITIALIZATION FAILED =========================
@@ -1327,7 +1327,9 @@ void FullSystem::makeKeyFrame( FrameHessian* fh)
 			ef->lastNullspaces_affA,
 			ef->lastNullspaces_affB);
 // 	LOG(INFO)<<"ef->marginalizePointsF();";
+    std::cout << "marginalizePointsF" << std::endl;
 	ef->marginalizePointsF();
+    std::cout << "marginalizePointsF end" << std::endl;
 
 // 	LOG(INFO)<<"makeNewTraces";
 	// =========================== add new Immature points & new residuals =========================
@@ -1348,6 +1350,7 @@ void FullSystem::makeKeyFrame( FrameHessian* fh)
 		if(frameHessians[i]->flaggedForMarginalization)
 			{marginalizeFrame(frameHessians[i]); i=0;}
 // 	LOG(INFO)<<"make key end";
+    std::cout << "make key end" << std::endl;
 // 	delete fh_right;
 
 // 	printLogLine();
