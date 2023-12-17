@@ -263,7 +263,7 @@ namespace dso {
 
     void EnergyFunctional::compress_Jr(MatXXc &J, VecXc &r)
     {
-        if (J.rows() < 4 * J.cols())
+        if (J.rows() <  20 * J.cols())
             return;
         MatXXc Jr = MatXXc::Zero(J.rows(), J.cols() + 1);
         //! 组Jr

@@ -96,7 +96,7 @@ namespace dso {
             std::cout << "maxiter........" << maxiter << std::endl;
         }
 #endif
-    void EnergyFunctional::pcgReductor(VecXc AAq[], std::vector<MatXXc > *A, VecXc q,
+    void EnergyFunctional::pcgReductor(VecXc q[], std::vector<MatXXc > *A, VecXc d,
                                        int min, int max, Vec10 *stat, int tid)
     {
 //    std::cout << "tid: " << tid << std::endl;
@@ -104,8 +104,8 @@ namespace dso {
         if (tid == -1)
             tid = 0;
         for (int j = min; j < max; j++) {
-            VecXc Aq = (*A)[j] * q;
-            AAq[tid] = AAq[tid] + ((*A)[j].transpose() * Aq);
+//            VecXc Ad = (*A)[j] * d;
+            q[tid] = q[tid] + (*A)[j].transpose() * ((*A)[j] * d);
         }
 //    std::cout << AAq[tid].transpose() << std::endl;
     }
@@ -188,6 +188,7 @@ namespace dso {
         VecXc lambda_inv = VecXc::Zero((*A)[0].cols());
         VecXc b_total = VecXc::Zero((*A)[0].cols());
 
+        //! 在滑窗中，因为频繁的优化，这里也可以进行并行化
         for (int j = 0; j < (*A).size(); j++) {
             for (int k = 0; k < (*A)[0].cols(); k++)
                 lambda_inv(k) += ((*A)[j].col(k).transpose() * (*A)[j].col(k));
@@ -204,42 +205,44 @@ namespace dso {
 
         VecXc d = lambda.asDiagonal() * r;
         rkf_scalar delta_new = r.transpose() * d;
-//        std::cout << "rr_old: " << rr_old << std::endl;
         rkf_scalar delta_0 = delta_new;
+
+        std::cout << "delta_0: " << delta_0 << std::endl;
 
         while (i < maxiter && delta_new > tor * tor * delta_0) {
             VecXc q = VecXc::Zero((*A)[0].cols());
             if (!MT) {
-                for (int j = 0; j < (*A).size(); j++) {
-                    q = q + ((*A)[j].transpose() * ((*A)[j] * d));
-                }
-//                pcgReductor(&AAq, A, q, 0, (*A).size(), NULL, -1);
+//                for (int j = 0; j < (*A).size(); j++) {
+//                    q = q + ((*A)[j].transpose() * ((*A)[j] * d));
+//                }
+               //! 如果i取余50,可以加上计算Ax
+                pcgReductor(&q, A, d, 0, (*A).size(), NULL, -1);
             }
-#if 0
+#if 1
             else {
-                VecXc AAqs[NUM_THREADS];
+                VecXc qs[NUM_THREADS];
                 for (int k = 0; k < NUM_THREADS; k++) {
-                    AAqs[k] = VecXc::Zero((*A)[0].cols());
+                    qs[k] = VecXc::Zero((*A)[0].cols());
                 }
                 red->reduce(boost::bind(&EnergyFunctional::pcgReductor,
-                                        this, AAqs, A, q, _1, _2, _3, _4),
+                                        this, qs, A, d, _1, _2, _3, _4),
                             0, (*A).size(), 0);
-                AAq = AAqs[0];
+                q = qs[0];
                 for (int k = 1; k < NUM_THREADS; k++)
-                    AAq.noalias() += AAqs[k];
+                    q.noalias() += qs[k];
             }
 #endif
             rkf_scalar alpha = delta_new / (d.transpose() * q);
             x = x + alpha * d;
-            VecXc temp_total = VecXc::Zero((*A)[0].cols());
-            if (i % 50 == 0) {
-                for (int j = 0; j < (*A).size(); j++) {
-                    temp_total = temp_total + ((*A)[j].transpose() * ((*A)[j] * x));
-                }
-                r = b_total - temp_total;
-            } else {
+//            VecXc temp_total = VecXc::Zero((*A)[0].cols());
+//            if (i % 50 == 0) {
+//                for (int j = 0; j < (*A).size(); j++) {
+//                    temp_total = temp_total + ((*A)[j].transpose() * ((*A)[j] * x));
+//                }
+//                r = b_total - (delta_new / (d.transpose() * q)) * q;
+//            } else {
                 r = r - alpha * q;
-            }
+//            }
             VecXc s = lambda.asDiagonal() * r;
             rkf_scalar delta_old = delta_new;
             delta_new = r.transpose() * s;
@@ -247,6 +250,7 @@ namespace dso {
             d = s + beta * d;
             i = i + 1;
         }
+        std::cout << "iter: " << i << std::endl;
     }
     void EnergyFunctional::cg(MatXXc &A, VecXc &b, VecXc &x, rkf_scalar tor, int maxiter)
     {
@@ -379,7 +383,7 @@ namespace dso {
             d = s + beta * d;
             i++;
         }
-//        std::cout << i << std::endl;
+        std::cout << "pcg iters: " << i << std::endl;
     }
     void EnergyFunctional::leastsquare_pcg_orig(MatXXc &A, VecXc &b, VecXc &x, rkf_scalar tor, int maxiter)
     {

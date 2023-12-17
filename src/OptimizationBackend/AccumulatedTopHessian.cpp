@@ -44,6 +44,7 @@ namespace dso
 #define FRAMES (nframes[0])
 //#define FRAMES (8)
 #endif
+#if 0
     TicToc timer_ACC1;
     double times_ACC1 = 0.0;
     TicToc timer_ACC2;
@@ -54,6 +55,7 @@ namespace dso
     double times_ACC4 = 0.0;
     TicToc timer_ACC5;
     double times_ACC5 = 0.0;
+#endif
 
     template<int mode>
     void AccumulatedTopHessianSSE::addPoint(EFPoint* p, EnergyFunctional *ef, int tid)	// 0 = active, 1 = linearized, 2=marginalize
@@ -118,7 +120,7 @@ namespace dso
             Hdd_acc += Ji2_Jpdd.dot(rJ->Jpdd);
             Hcd_acc += rJ->Jpdc[0]*Ji2_Jpdd[0] + rJ->Jpdc[1]*Ji2_Jpdd[1];
 #ifdef USE_MYH
-            timer_ACC1.tic();
+//            timer_ACC1.tic();
             //! 上面的是重投影误差的偏导，另外还要有8×2的矩阵JIdx，即8维的residual和x, y的偏导
             Eigen::Matrix<float, 8, 12> J_th = Eigen::Matrix<float, 8, 12>::Zero();
             J_th.block<8, 4>(0, 0) = rJ->JIdx[0] * rJ->Jpdc[0].transpose() +
@@ -147,7 +149,7 @@ namespace dso
             k++;
             assert(k <= FRAMES);
 
-            times_ACC1 += timer_ACC1.toc();
+//            times_ACC1 += timer_ACC1.toc();
         }
         if (mode == 0) {
             if (ngoodres == 0) {
@@ -161,7 +163,7 @@ namespace dso
                 return;
             }
         }
-        timer_ACC2.tic();
+//        timer_ACC2.tic();
 #if 0
         {  // qr
             int i = 0;
@@ -214,14 +216,16 @@ namespace dso
         Jr1.row(0).setZero();
         Jr2[0] = 0.0;
 #endif
-        times_ACC2 += timer_ACC2.toc();
+//        times_ACC2 += timer_ACC2.toc();
+
 
         p->Jr1 = Jr1.middleRows(1, 8 * k - 1).cast<rkf_scalar>();
         p->Jr2 = Jr2.segment(1, 8 * k - 1).cast<rkf_scalar>();
+//        ef->compress_Jr(p->Jr1, p->Jr2);
 
-        assert(p->Jr1.rows() == 8 * k - 1);
+//        assert(p->Jr1.rows() == 8 * k - 1);
 
-        assert(p->Jr1.rows() > 0);
+//        assert(p->Jr1.rows() > 0);
 #ifndef NEW_METHOD
         H1 += (p->Jr1.transpose() * p->Jr1);
 //        H1 += (Jr1.transpose() * Jr1);

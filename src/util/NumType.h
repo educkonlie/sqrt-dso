@@ -69,7 +69,7 @@ typedef Sophus::SO3d SO3;
 
 #define NEW_METHOD // 我们的rootba算法将使用这个宏来表明 2023.12.04
 #ifdef NEW_METHOD
-#define rkf_scalar double
+#define rkf_scalar float
 typedef Eigen::Matrix<rkf_scalar, Eigen::Dynamic, Eigen::Dynamic> MatXXc;
 typedef Eigen::Matrix<rkf_scalar, Eigen::Dynamic, 1> VecXc;
 typedef Eigen::Matrix<rkf_scalar, 8, 1> Vec8c;

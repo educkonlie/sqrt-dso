@@ -29,6 +29,7 @@
 #include "FullSystem/Residuals.h"
 #include "OptimizationBackend/AccumulatedSCHessian.h"
 #include "OptimizationBackend/AccumulatedTopHessian.h"
+#include "util/NumType.h"
 
 #if !defined(__SSE3__) && !defined(__SSE2__) && !defined(__SSE1__)
 #include "SSE2NEON.h"
@@ -36,7 +37,16 @@
 
 namespace dso
 {
-
+    TicToc timer_ACC1;
+    double times_ACC1 = 0.0;
+    TicToc timer_ACC2;
+    double times_ACC2 = 0.0;
+    TicToc timer_ACC3;
+    double times_ACC3 = 0.0;
+    TicToc timer_ACC4;
+    double times_ACC4 = 0.0;
+    TicToc timer_ACC5;
+    double times_ACC5 = 0.0;
 
 bool EFAdjointsValid = false;
 bool EFIndicesValid = false;
@@ -663,7 +673,11 @@ void EnergyFunctional::marginalizePointsF()
 //              << (JM.transpose() * JM).ldlt().solve(JM.transpose() * rM).transpose() << std::endl;
 
 
+    timer_ACC3.tic();
     compress_Jr(JM, rM);
+    times_ACC3 += timer_ACC3.toc();
+
+    std::cout << "marg p: " << times_ACC3 << std::endl;
 
 //    std::cout << "JM size: " << JM.rows() << " " << JM.cols() << std::endl;
 //    std::cout << "JM^T * rM:\n" << (JM.transpose() * rM).transpose() << std::endl;
@@ -791,6 +805,7 @@ void EnergyFunctional::orthogonalize(VecX* b, MatXX* H)
 
 void EnergyFunctional::solveSystemF(int iteration, double lambda, CalibHessian* HCalib)
 {
+    timer_ACC5.tic();
 
 #ifdef NEW_METHOD
 //    test_qr();
@@ -809,7 +824,9 @@ void EnergyFunctional::solveSystemF(int iteration, double lambda, CalibHessian* 
 	MatXX  HA_top;
 	VecX   bA_top, bM_top;
 
+    timer_ACC1.tic();
     accumulateAF_MT(HA_top, bA_top, multiThreading);
+    times_ACC1 += timer_ACC1.toc();
 
 #ifdef NEW_METHOD
 //    if (JM.rows() > 0) {
@@ -868,23 +885,34 @@ void EnergyFunctional::solveSystemF(int iteration, double lambda, CalibHessian* 
 
 #ifdef NEW_METHOD
 //! 加Damping
-//    MatXXc Damping = 1e-4 * MatXXc::Identity(Js[0].cols(), Js[0].cols());
-//    Js.push_back(Damping);
-//    rs.push_back(VecXc::Zero(Js[0].cols()));
+    MatXXc Damping = 1e-8 * MatXXc::Identity(Js[0].cols(), Js[0].cols());
+    Js.push_back(Damping);
+    rs.push_back(VecXc::Zero(Js[0].cols()));
 #endif
 
-//    int total = 0;
-//    for (int i = 0; i < Js.size(); i++) {
-//        total += Js[i].rows();
-//    }
-//    MatXXc JJ = MatXXc::Zero(total, Js[0].cols());
-//    VecXc rr = VecXc::Zero(total);
-//    int m = 0;
-//    for (int i = 0; i < Js.size(); i++) {
-//        JJ.middleRows(m, Js[i].rows()) = Js[i];
-//        rr.middleRows(m, rs[i].rows()) = rs[i];
-//        m += rs[i].rows();
-//    }
+    int total = 0;
+    for (int i = 0; i < Js.size(); i++) {
+        total += Js[i].rows();
+    }
+    MatXXc JJ = MatXXc::Zero(total, Js[0].cols());
+    VecXc rr = VecXc::Zero(total);
+    int m = 0;
+    for (int i = 0; i < Js.size(); i++) {
+        JJ.middleRows(m, Js[i].rows()) = Js[i];
+        rr.middleRows(m, rs[i].rows()) = rs[i];
+        m += rs[i].rows();
+    }
+    std::vector<MatXXc> JJs;
+    std::vector<VecXc> rrs;
+    m = 0;
+    while (m + 1000 < JJ.rows()) {
+        JJs.push_back(JJ.middleRows(m, 1000));
+        rrs.push_back(rr.middleRows(m, 1000));
+        m += 1000;
+    }
+    JJs.push_back(JJ.middleRows(m, JJ.rows() - m));
+    rrs.push_back(rr.middleRows(m, rr.rows() - m));
+
 
 //    compress_Jr(JJ, rr);
 //    std::cout << "Js:\n" << Js[Js.size() - 1] << std::endl;
@@ -907,15 +935,40 @@ void EnergyFunctional::solveSystemF(int iteration, double lambda, CalibHessian* 
 //    std::cout << "JJ cols:   " << JJ.cols() << std::endl;
     VecXc y;
 //    cg(JJ, rr, y, 1e-6, 10);
+//    timer_ACC4.tic();
 //    compress_Jr(JJ, rr);
+//    times_ACC4 += timer_ACC4.toc();
+
+    timer_ACC4.tic();
 //    MatXXc JJJJ = JJ.transpose() * JJ;
 //    VecXc rrrr = JJ.transpose() * rr;
+    times_ACC4 += timer_ACC4.toc();
 //    y = JJ.householderQr().solve(rr);
-//    pcg_orig(JJJJ, rrrr, y, 1e-3, 100);
-//    leastsquare_pcg_orig(JJ, rr, y, 1e-6, 100);
+//    y = JJJJ.ldlt().solve(rrrr);
 
-    leastsquare_pcg_origMT(red, &Js, &rs, this, y, 1e-3, 100, false);
+//    timer_ACC2.tic();
+//    pcg_orig(JJJJ, rrrr, y, 1e-3, 1000);
+//    leastsquare_pcg_orig(JJ, rr, y, 1e-3, 1000);
+//    times_ACC2 += timer_ACC2.toc();
 
+    timer_ACC2.tic();
+    leastsquare_pcg_origMT(red, &JJs, &rrs, this, y, 1e-2, 1000, true);
+//    leastsquare_pcg_origMT2(red, JJ, rr, this, y, 1e-3, 1000, true);
+    times_ACC2 += timer_ACC2.toc();
+
+    times_ACC5 += timer_ACC5.toc();
+
+
+//    VecXc yy;
+//    timer_ACC4.tic();
+//    leastsquare_pcg_origMT(red, &Js, &rs, this,  yy, 1e-6, 1000, false);
+//    times_ACC4 += timer_ACC4.toc();
+
+    std::cout << "............" << std::endl;
+    std::cout << "qr  " << times_ACC1 << std::endl;
+    std::cout << "pcg " << times_ACC2 << std::endl;
+    std::cout <<"compress in solveS " << times_ACC4 << std::endl;
+    std::cout <<"solveS " << times_ACC5 << std::endl;
 //    std::cout << num_of_iter << std::endl;
 //    y = JJJJ.ldlt().solve(rrrr);
 //! 可能是没有保证正定的缘故
