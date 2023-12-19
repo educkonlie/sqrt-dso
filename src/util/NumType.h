@@ -43,7 +43,7 @@ namespace dso
 
 
 #define MAX_RES_PER_POINT 8
-#define NUM_THREADS 8
+#define NUM_THREADS 15
 
 
 #define todouble(x) (x).cast<double>()

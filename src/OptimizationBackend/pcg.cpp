@@ -189,6 +189,7 @@ namespace dso {
         VecXc b_total = VecXc::Zero((*A)[0].cols());
 
         //! 在滑窗中，因为频繁的优化，这里也可以进行并行化
+        //! 可以改为block-jacobi
         for (int j = 0; j < (*A).size(); j++) {
             for (int k = 0; k < (*A)[0].cols(); k++)
                 lambda_inv(k) += ((*A)[j].col(k).transpose() * (*A)[j].col(k));
@@ -199,9 +200,6 @@ namespace dso {
             lambda(k) = 1.0 / lambda_inv(k);
         }
         VecXc r = b_total;
-//        std::cout << lambda.asDiagonal() * (lambda_inv.asDiagonal().toDenseMatrix()) << std::endl;
-//        std::cout << lambda_inv.asDiagonal() << std::endl;
-//        exit(0);
 
         VecXc d = lambda.asDiagonal() * r;
         rkf_scalar delta_new = r.transpose() * d;
@@ -309,11 +307,13 @@ namespace dso {
             delta_old = delta_new;
             delta_new = r.transpose() * r;
 
-            std::cout << "cg delta_new: " << delta_new << std::endl;
-            num_of_iter++;
+//            std::cout << "cg delta_new: " << delta_new << std::endl;
+//            num_of_iter++;
             beta = delta_new / delta_old;
             d = r + beta * d;
+            i++;
         }
+        std::cout << "iters " << i << std::endl;
     }
     void EnergyFunctional::leastsquare_cg_orig(MatXXc &A, VecXc &b, VecXc &x, rkf_scalar tor, int maxiter)
     {
@@ -348,7 +348,14 @@ namespace dso {
     void EnergyFunctional::pcg_orig(MatXXc &A, VecXc &b, VecXc &x, rkf_scalar tor, int maxiter)
     {
         int i = 0;
-        MatXXc M_inv = A.diagonal().asDiagonal().inverse();
+        MatXXc M_inv = MatXXc::Zero(A.rows(), A.cols());
+        M_inv.block(0, 0, A.rows() / 2, A.cols() / 2)
+                = A.block(0, 0, A.rows() / 2, A.cols() / 2);
+        M_inv.block(A.rows() / 2, A.cols() / 2, A.rows() - A.rows() / 2, A.cols() - A.cols() / 2)
+        = A.block(A.rows() / 2, A.cols() / 2, A.rows() - A.rows() / 2, A.cols() - A.cols() / 2);
+        M_inv = M_inv.inverse();
+
+//        MatXXc M_inv = A.diagonal().asDiagonal().inverse();
         x = VecXc::Zero(A.cols());
         VecXc r = b - A * x;
         VecXc d = M_inv * r;
@@ -395,6 +402,7 @@ namespace dso {
             lambda(i) = 1.0 / (A.col(i).transpose() * A.col(i));
         MatXXc M_inv = lambda.asDiagonal();
         VecXc Atb = A.transpose() * b;
+//        std::cout << "M_inv: " << lambda.transpose() << std::endl;
 
 //        for (int i = 0; i < M_inv.cols(); i++)
 //            assert(lambda(i) == M_inv(i, i));
@@ -433,7 +441,7 @@ namespace dso {
             d = s + beta * d;
             i++;
         }
-//        std::cout << i << std::endl;
+        std::cout << i << std::endl;
     }
 
     void EnergyFunctional::pcg(MatXXc &A, VecXc &b, VecXc &x, rkf_scalar tor, int maxiter)

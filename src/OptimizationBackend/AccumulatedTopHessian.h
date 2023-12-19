@@ -48,14 +48,14 @@ public:
 			acc[tid]=0;
 			nframes[tid]=0;
 		}
-        myH = NULL;
+//        myH = NULL;
 	};
 	inline ~AccumulatedTopHessianSSE()
 	{
 		for(int tid=0;tid < NUM_THREADS; tid++) {
 			if(acc[tid] != 0) delete[] acc[tid];
 		}
-        if (myH != 0) delete[] myH;
+//        if (myH != 0) delete[] myH;
 	};
 
 	inline void setZero(int nFrames, int min=0, int max=1, Vec10* stats=0, int tid=0)
@@ -63,13 +63,13 @@ public:
 		if(nFrames != nframes[tid]) {
 			if(acc[tid] != 0) delete[] acc[tid];
             acc[tid] = new AccumulatorApprox[nFrames*nFrames];
-            if(myH != 0) delete[] myH;
-            myH = new Mat1313f[nFrames * nFrames];
+//            if(myH != 0) delete[] myH;
+//            myH = new Mat1313f[nFrames * nFrames];
 		}
 
 		for(int i=0;i<nFrames*nFrames;i++) {
             acc[tid][i].initialize();
-            myH[i].setZero();
+//            myH[i].setZero();
         }
 
 		nframes[tid]=nFrames;
@@ -82,11 +82,16 @@ public:
 #if 1
 	template<int mode> void addPoint(EFPoint* p, EnergyFunctional *ef, int tid=0);
 #endif
+    template<int mode> void addPointsInternal(
+            std::vector<EFPoint*>* points, EnergyFunctional *ef,
+            int min=0, int max=1, Vec10* stats=0, int tid=0) {
+        for(int i=min;i<max;i++) addPoint<mode>((*points)[i],ef,tid);
+    }
 	int nframes[NUM_THREADS];
 	EIGEN_ALIGN16 AccumulatorApprox* acc[NUM_THREADS];
 	int nres[NUM_THREADS];
 
-    Mat1313f *myH;
+//    Mat1313f *myH;
 
 private:
 

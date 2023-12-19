@@ -97,6 +97,7 @@ public:
 #ifdef NEW_METHOD
     MatXXc JM;
     VecXc rM;
+
     std::vector<MatXXc> Js;
     std::vector<VecXc> rs;
     int num_of_iter;
@@ -125,6 +126,12 @@ public:
                                 EnergyFunctional const * const EF,
                                 VecXc &x,
                                 rkf_scalar tor, int maxiter, bool MT);
+    void compress_Jr_reductor(std::vector<MatXXc> *JJsp, std::vector<VecXc> *rrsp,
+                              int min, int max, Vec10 *stat, int tid);
+    void compress_JrMT(IndexThreadReduce<Vec10> *red,
+                       std::vector<MatXXc > *JJsp, std::vector<VecXc > *rrsp,
+                       EnergyFunctional const * const EF,
+                       bool MT);
     void marg_frame(MatXXc &J, VecXc &r, int idx);
     void no_marg_frame(MatXXc &J, VecXc &r, MatXXc &J_new, VecXc &r_new, int nframes);
     void compress_Jr(MatXXc &J, VecXc &r);

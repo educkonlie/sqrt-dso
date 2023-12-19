@@ -31,6 +31,8 @@
 #include "OptimizationBackend/AccumulatedTopHessian.h"
 #include "util/NumType.h"
 
+#include <execution>
+
 #if !defined(__SSE3__) && !defined(__SSE2__) && !defined(__SSE1__)
 #include "SSE2NEON.h"
 #endif
@@ -122,7 +124,6 @@ EnergyFunctional::EnergyFunctional()
 	adHost=0;
 	adTarget=0;
 
-
 	red=0;
 
 	adHostF=0;
@@ -139,12 +140,10 @@ EnergyFunctional::EnergyFunctional()
     num_of_iter = 0;
 #endif
 
-//	accSSE_top_L = new AccumulatedTopHessianSSE();
 	accSSE_top_A = new AccumulatedTopHessianSSE();
 	accSSE_bot = new AccumulatedSCHessianSSE();
 
 	resInA = resInL = resInM = 0;
-//	currentLambda=0;
 }
 EnergyFunctional::~EnergyFunctional()
 {
@@ -191,20 +190,9 @@ void EnergyFunctional::setDeltaF(CalibHessian* HCalib)
 		}
 
 	cDeltaF = HCalib->value_minus_value_zero.cast<float>();
-#ifdef NEW_METHOD
-//    for (int i = 0; i < cDeltaF.rows(); i++)
-//        cDeltaF_new_method = HCalib->value_minus_value_zero.cast<rkf_scalar>();
-//        cDeltaF_new_method(i) = std::sqrt(cDeltaF(i));
-#endif
 	for(EFFrame* f : frames) {
 		f->delta = f->data->get_state_minus_stateZero().head<8>();
 		f->delta_prior = f->data->get_state().head<8>();
-#ifdef NEW_METHOD
-//        for (int i = 0; i < f->delta_prior.rows(); i++) {
-//            assert(f->delta_prior(i) > 0.0);
-//            f->delta_prior_new_method(i) = std::sqrt(f->delta_prior(i));
-//        }
-#endif
 
 		/*for(EFPoint* p : f->points) {
             p->deltaF = p->data->idepth - p->data->idepth_zero;
@@ -219,12 +207,35 @@ void EnergyFunctional::setDeltaF(CalibHessian* HCalib)
 // accumulates & shifts L.
     void EnergyFunctional::accumulateAF_MT(MatXX &H, VecX &b, bool MT)
     {
-        accSSE_top_A->setZero(nFrames);
-        Js.clear();
-        rs.clear();
+        if (MT) {
+            std::cout << "MT" << std::endl;
+            Js.clear();
+            rs.clear();
+            red->reduce(boost::bind(&AccumulatedTopHessianSSE::setZero, accSSE_top_A, nFrames, _1, _2, _3, _4), 0, 0,
+                        0);
+            red->reduce(boost::bind(&AccumulatedTopHessianSSE::addPointsInternal<0>,
+                                    accSSE_top_A, &allPoints, this, _1, _2, _3, _4),
+                        0, allPoints.size(), 0);
+//            accSSE_top_A->stitchDoubleMT(red, H, b, this, false, true);
 
-        {
-//            TicToc timer_addPoint;
+            int total_rows = 0;
+            for (EFFrame *f: frames) {
+                for (EFPoint *p: f->points) {
+//                    accSSE_top_A->addPoint<0>(p, this, 0);
+                    total_rows += p->Jr1.rows();
+                    if (p->Jr1.rows() > 0) {
+                        Js.push_back(p->Jr1);
+                        rs.push_back(p->Jr2);
+                    }
+                }
+            }
+            accSSE_top_A->stitchDouble(this, true, true);
+
+            resInA = accSSE_top_A->nres[0];
+        } else {
+            accSSE_top_A->setZero(nFrames);
+            Js.clear();
+            rs.clear();
             int total_rows = 0;
             for (EFFrame *f: frames) {
                 for (EFPoint *p: f->points) {
@@ -233,65 +244,14 @@ void EnergyFunctional::setDeltaF(CalibHessian* HCalib)
                     if (p->Jr1.rows() > 0) {
                         Js.push_back(p->Jr1);
                         rs.push_back(p->Jr2);
-                    } else {
-//                        assert(false);
                     }
                 }
             }
-
-
-//            std::cout << "before stitchDouble:" << std::endl;
-//            std::cout << H1.ldlt().solve(b1).transpose() << std::endl;
-//            MatXXc H2 = MatXXc::Zero(accSSE_top_A->nframes[0]*8+CPARS, accSSE_top_A->nframes[0]*8+CPARS);
-//            VecXc b2 = VecXc::Zero(accSSE_top_A->nframes[0] * 8+CPARS);
-//            for (int i = 0; i < Js.size(); i++) {
-//                H2 += Js[i].transpose() * Js[i];
-//                b2 += Js[i].transpose() * rs[i];
-//            }
-//            std::cout << H2.ldlt().solve(b2).transpose() << std::endl;
-//            VecXc x_new;
-//            pcgMT(red, &Js, &rs, this, x_new, 1e-8, 100, false);
-//            std::cout << x_new.transpose() << std::endl;
-
-//            auto times_addPoint = timer_addPoint.toc();
-//            std::cout << "addPoint cost time " << times_addPoint << std::endl;
-        }
-        {
-//            TicToc timer_stitchDouble;
             accSSE_top_A->stitchDouble(this, true, true);
-//            auto times_stitchDouble = timer_stitchDouble.toc();
-//            std::cout << "stitchDouble cost time " << times_stitchDouble << std::endl;
+
+            resInA = accSSE_top_A->nres[0];
         }
-#ifndef NEW_METHOD
-        H += H1.cast<myscalar>();
-        b += b1.cast<myscalar>();
-#endif
-
-//        std::cout << "after stitchDouble:" << std::endl;
-//        std::cout << H.ldlt().solve(b).transpose() << std::endl;
-//        MatXXc H3 = MatXXc::Zero(accSSE_top_A->nframes[0]*8+CPARS, accSSE_top_A->nframes[0]*8+CPARS);
-//        VecXc b3 = VecXc::Zero(accSSE_top_A->nframes[0] * 8+CPARS);
-//        for (int i = 0; i < Js.size(); i++) {
-//            H3 += Js[i].transpose() * Js[i];
-//            b3 += Js[i].transpose() * rs[i];
-//        }
-//        std::cout << H3.ldlt().solve(b3).transpose() << std::endl;
-
-        resInA = accSSE_top_A->nres[0];
     }
-#if 0
-void EnergyFunctional::accumulateSCF_MT(MatXX &H, VecX &b, bool MT)
-{
-    accSSE_bot->setZero(nFrames);
-    TicToc timer_SCF;
-    for(EFFrame* f : frames)
-        for(EFPoint* p : f->points)
-            accSSE_bot->addPoint(p);
-    accSSE_bot->stitchDouble(H, b,this);
-    auto times_SCF= timer_SCF.toc();
-    std::cout << "SCF cost time " << times_SCF << std::endl;
-}
-#endif
 //! resubstitute是输出，把后端的解输出到前端
 void EnergyFunctional::resubstituteF_MT(VecX x, CalibHessian* HCalib, bool MT)
 {
@@ -672,12 +632,32 @@ void EnergyFunctional::marginalizePointsF()
 //    std::cout << "before compress JM, rM:\n"
 //              << (JM.transpose() * JM).ldlt().solve(JM.transpose() * rM).transpose() << std::endl;
 
-
+    std::vector<MatXXc> JMs;
+    std::vector<VecXc> rMs;
+    m = 0;
+    std::cout << "JM rows: " << JM.rows() << std::endl;
+    while (m + 3000 < JM.rows()) {
+        MatXXc temp1 = JM.middleRows(m, 3000);
+        VecXc temp2  = rM.middleRows(m, 3000);
+        JMs.push_back(temp1);
+        rMs.push_back(temp2);
+        m += 3000;
+    }
+    JMs.push_back(JM.bottomRows(JM.rows() - m));
+    rMs.push_back(rM.bottomRows(rM.rows() - m));
+    std::cout << "JMs.size()" << JMs.size() << std::endl;
     timer_ACC3.tic();
-    compress_Jr(JM, rM);
+    compress_JrMT(red, &JMs, &rMs, this, true);
+//    compress_Jr(JM, rM);
     times_ACC3 += timer_ACC3.toc();
 
-    std::cout << "marg p: " << times_ACC3 << std::endl;
+    std::cout << "marg p multi: " << times_ACC3 << std::endl;
+
+    timer_ACC4.tic();
+    compress_Jr(JM, rM);
+    times_ACC4 += timer_ACC4.toc();
+
+    std::cout << "marg p single: " << times_ACC4 << std::endl;
 
 //    std::cout << "JM size: " << JM.rows() << " " << JM.cols() << std::endl;
 //    std::cout << "JM^T * rM:\n" << (JM.transpose() * rM).transpose() << std::endl;
@@ -890,28 +870,49 @@ void EnergyFunctional::solveSystemF(int iteration, double lambda, CalibHessian* 
     rs.push_back(VecXc::Zero(Js[0].cols()));
 #endif
 
-    int total = 0;
-    for (int i = 0; i < Js.size(); i++) {
-        total += Js[i].rows();
-    }
-    MatXXc JJ = MatXXc::Zero(total, Js[0].cols());
-    VecXc rr = VecXc::Zero(total);
-    int m = 0;
-    for (int i = 0; i < Js.size(); i++) {
-        JJ.middleRows(m, Js[i].rows()) = Js[i];
-        rr.middleRows(m, rs[i].rows()) = rs[i];
-        m += rs[i].rows();
-    }
-    std::vector<MatXXc> JJs;
-    std::vector<VecXc> rrs;
-    m = 0;
-    while (m + 1000 < JJ.rows()) {
-        JJs.push_back(JJ.middleRows(m, 1000));
-        rrs.push_back(rr.middleRows(m, 1000));
-        m += 1000;
-    }
-    JJs.push_back(JJ.middleRows(m, JJ.rows() - m));
-    rrs.push_back(rr.middleRows(m, rr.rows() - m));
+//    int total = 0;
+//    for (int i = 0; i < Js.size(); i++) {
+//        total += Js[i].rows();
+//    }
+//    std::cout << "total " << total << std::endl;
+//
+//    MatXXc JJ = MatXXc::Zero(total, Js[0].cols());
+//    VecXc rr = VecXc::Zero(total);
+//    int m = 0;
+//    for (int i = 0; i < Js.size(); i++) {
+//        JJ.middleRows(m, Js[i].rows()) = Js[i];
+//        rr.middleRows(m, rs[i].rows()) = rs[i];
+//        m += rs[i].rows();
+//    }
+//    std::vector<MatXXc> JJs;
+//    std::vector<VecXc> rrs;
+//    m = 0;
+//    while (m + 10000 < JJ.rows()) {
+//        JJs.push_back(JJ.middleRows(m, 10000));
+//        rrs.push_back(rr.middleRows(m, 10000));
+//        m += 10000;
+//    }
+//    JJs.push_back(JJ.middleRows(m, JJ.rows() - m));
+//    rrs.push_back(rr.middleRows(m, rr.rows() - m));
+
+//    std::vector<int> indices;
+//    for (int i = 0; i < JJs.size(); i++)
+//        indices.push_back(i);
+
+//    std::for_each(std::execution::par_unseq, indices.begin(), indices.end(),
+//                  [&](auto &i) {
+//    for (int i = 0; i < JJs.size(); i++)
+//                      compress_Jr(JJs[i], rrs[i]);
+//                  });
+
+//    std::cout << "JJs size " << JJs.size() << std::endl;
+
+//    timer_ACC4.tic();
+//    compress_JrMT(red, &JJs, &rrs, this, true);
+//    times_ACC4 += timer_ACC4.toc();
+
+//    std::cout << "rows:.... " << JJs[23].rows() << std::endl;
+
 
 
 //    compress_Jr(JJ, rr);
@@ -939,21 +940,20 @@ void EnergyFunctional::solveSystemF(int iteration, double lambda, CalibHessian* 
 //    compress_Jr(JJ, rr);
 //    times_ACC4 += timer_ACC4.toc();
 
-    timer_ACC4.tic();
+//    timer_ACC4.tic();
 //    MatXXc JJJJ = JJ.transpose() * JJ;
 //    VecXc rrrr = JJ.transpose() * rr;
-    times_ACC4 += timer_ACC4.toc();
+//    times_ACC4 += timer_ACC4.toc();
 //    y = JJ.householderQr().solve(rr);
 //    y = JJJJ.ldlt().solve(rrrr);
 
 //    timer_ACC2.tic();
 //    pcg_orig(JJJJ, rrrr, y, 1e-3, 1000);
-//    leastsquare_pcg_orig(JJ, rr, y, 1e-3, 1000);
+//    leastsquare_pcg_orig(JJ, rr, y, 1e-2, 1000);
 //    times_ACC2 += timer_ACC2.toc();
 
     timer_ACC2.tic();
-    leastsquare_pcg_origMT(red, &JJs, &rrs, this, y, 1e-2, 1000, true);
-//    leastsquare_pcg_origMT2(red, JJ, rr, this, y, 1e-3, 1000, true);
+    leastsquare_pcg_origMT(red, &Js, &rs, this, y, 1e-2, 1000, true);
     times_ACC2 += timer_ACC2.toc();
 
     times_ACC5 += timer_ACC5.toc();

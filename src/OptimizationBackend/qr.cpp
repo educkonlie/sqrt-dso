@@ -146,6 +146,7 @@ namespace dso {
             rkf_scalar pivot = Jl(j, j);
             for (int i = j + 1; i < nres; i++) {
                 if (std::abs(Jl(i, j)) < 1e-10)
+//                if (Jl(i, j) == 0)
                     continue;
                 rkf_scalar a = Jl(i, j);
                 rkf_scalar r = sqrt(pivot * pivot + a * a);
@@ -153,7 +154,7 @@ namespace dso {
                 rkf_scalar s = a / r;
                 pivot = r;
                 assert(std::isfinite(r));
-                assert(std::abs(r) > 1e-10);
+//                assert(std::abs(r) > 0);
 // 变0的，先到temp
                 temp1 = -s * Jl.row(j) + c * Jl.row(i);
 // 变大的.  j是pivot，在上面，i在下面
@@ -263,7 +264,7 @@ namespace dso {
 
     void EnergyFunctional::compress_Jr(MatXXc &J, VecXc &r)
     {
-        if (J.rows() <  20 * J.cols())
+        if (J.rows() <  1 * J.cols() + 1)
             return;
         MatXXc Jr = MatXXc::Zero(J.rows(), J.cols() + 1);
         //! 组Jr
@@ -280,7 +281,27 @@ namespace dso {
         J = Jr.leftCols(Jr.cols() - 1);
         r = Jr.rightCols(1);
     }
-
+    void EnergyFunctional::compress_Jr_reductor(std::vector<MatXXc> *JJsp, std::vector<VecXc> *rrsp,
+                                                int min, int max, Vec10 *stat, int tid)
+    {
+        if (tid == -1)
+            tid = 0;
+        for (int i = min; i < max; i++)
+            compress_Jr((*JJsp)[i], (*rrsp)[i]);
+    }
+    void EnergyFunctional::compress_JrMT(IndexThreadReduce<Vec10> *red,
+                                         std::vector<MatXXc > *JJsp, std::vector<VecXc > *rrsp,
+                                         EnergyFunctional const * const EF,
+                                         bool MT)
+    {
+        if (!MT) {
+            compress_Jr_reductor(JJsp, rrsp, 0, (*JJsp).size(), NULL, -1);
+        } else {
+            red->reduce(boost::bind(&EnergyFunctional::compress_Jr_reductor,
+                                    this, JJsp, rrsp, _1, _2, _3, _4),
+                        0, (*JJsp).size(), 0);
+        }
+    }
     void EnergyFunctional::add_lambda_frame(MatXXc &J, VecXc &r, int idx, Vec8c Lambda, Vec8c alpha)
     {
         int old_rows = J.rows();
