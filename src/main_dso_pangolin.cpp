@@ -124,7 +124,7 @@ void settingsDefault(int preset)
 
 		setting_maxFrames = 7;
 //        setting_maxFrames = 4;
-//        setting_maxFrames = 15;
+//        setting_maxFrames = 20;
 //        setting_maxFrames = 210;
 //        setting_maxFrames = 100;
 

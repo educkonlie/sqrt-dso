@@ -653,11 +653,26 @@ void EnergyFunctional::marginalizePointsF()
 
     std::cout << "marg p multi: " << times_ACC3 << std::endl;
 
-    timer_ACC4.tic();
-    compress_Jr(JM, rM);
-    times_ACC4 += timer_ACC4.toc();
+    int rows_of_JM_compressed = 0;
+    for (int i = 0; i < JMs.size(); i++)
+        rows_of_JM_compressed += JMs[i].rows();
+    int cols_of_JM_compressed = JM.cols();
 
-    std::cout << "marg p single: " << times_ACC4 << std::endl;
+    JM = MatXXc::Zero(rows_of_JM_compressed, cols_of_JM_compressed);
+    rM = VecXc::Zero(rows_of_JM_compressed);
+
+    m = 0;
+    for (int i = 0; i < JMs.size(); i++) {
+        JM.middleRows(m, JMs[i].rows()) = JMs[i];
+        rM.middleRows(m, rMs[i].rows()) = rMs[i];
+        m += JMs[i].rows();
+    }
+
+//    timer_ACC4.tic();
+//    compress_Jr(JM, rM);
+//    times_ACC4 += timer_ACC4.toc();
+
+//    std::cout << "marg p single: " << times_ACC4 << std::endl;
 
 //    std::cout << "JM size: " << JM.rows() << " " << JM.cols() << std::endl;
 //    std::cout << "JM^T * rM:\n" << (JM.transpose() * rM).transpose() << std::endl;
@@ -884,6 +899,7 @@ void EnergyFunctional::solveSystemF(int iteration, double lambda, CalibHessian* 
 //        rr.middleRows(m, rs[i].rows()) = rs[i];
 //        m += rs[i].rows();
 //    }
+
 //    std::vector<MatXXc> JJs;
 //    std::vector<VecXc> rrs;
 //    m = 0;
@@ -925,8 +941,8 @@ void EnergyFunctional::solveSystemF(int iteration, double lambda, CalibHessian* 
 
 #if 1
 //    Eigen::LeastSquaresConjugateGradient<MatXXc > lscg;
-//    lscg.setMaxIterations(100);
-//    lscg.setTolerance(1e-10);
+//    lscg.setMaxIterations(1000);
+//    lscg.setTolerance(1e-2);
 //    lscg.compute(JJ);
 //    VecXc y = lscg.solve(rr);
 //    std::cout << "lscg  x:\n" << y.transpose() << std::endl;
