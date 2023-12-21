@@ -105,29 +105,21 @@ public:
     void qr(MatXXc &Jp, MatXXc &Jl);
     void qr2(MatXXc &Jp);
     void qr3(MatXXc &Jp, MatXXc &Jl, VecXc &Jr);
-    void qr3f(MatXXf &Jp, VecXf &Jl, VecXf &Jr);
+    void qr3f(MatXXfr &Jp, VecXf &Jl, VecXf &Jr);
     void test_qr();
 
-    void pcgReductor(VecXc AAq[], std::vector<MatXXc> *A, VecXc q,
-                     int min, int max, Vec10 *stat, int tid);
-    void pcgMT(IndexThreadReduce<Vec10> *red, std::vector<MatXXc > *A, std::vector<VecXc > *b,
-               EnergyFunctional const * const EF,
-               /*int num_of_A,*/ VecXc &x,
-               rkf_scalar tor, int maxiter, bool MT);
 
-    void cg(MatXXc &A, VecXc &b, VecXc &x, rkf_scalar tor, int maxiter);
     void cg_orig(MatXXc &A, VecXc &b, VecXc &x, rkf_scalar tor, int maxiter);
-    void pcg(MatXXc &A, VecXc &b, VecXc &x, rkf_scalar tor, int maxiter);
     void pcg_orig(MatXXc &A, VecXc &b, VecXc &x, rkf_scalar tor, int maxiter);
     void leastsquare_pcg_orig(MatXXc &A, VecXc &b, VecXc &x, rkf_scalar tor, int maxiter);
     void leastsquare_cg_orig(MatXXc &A, VecXc &b, VecXc &x, rkf_scalar tor, int maxiter);
+
 
     void leastsquare_pcg_origMT(IndexThreadReduce<Vec10> *red, std::vector<MatXXc > *A, std::vector<VecXc > *b,
                                 EnergyFunctional const * const EF,
                                 VecXc &x,
                                 rkf_scalar tor, int maxiter, bool MT);
-    void compress_Jr_reductor(std::vector<MatXXc> *JJsp, std::vector<VecXc> *rrsp,
-                              int min, int max, Vec10 *stat, int tid);
+
     void compress_JrMT(IndexThreadReduce<Vec10> *red,
                        std::vector<MatXXc > *JJsp, std::vector<VecXc > *rrsp,
                        EnergyFunctional const * const EF,
@@ -158,38 +150,44 @@ public:
 	  > connectivityMap;
 
 private:
-
-	VecX getStitchedDeltaF() const;
-
-	void resubstituteF_MT(VecX x, CalibHessian* HCalib, bool MT);
-    void resubstituteFPt(const VecCf &xc, Mat18f* xAd, int min, int max, Vec10* stats, int tid);
-
-	void accumulateAF_MT(MatXX &H, VecX &b, bool MT);
-
-	void orthogonalize(VecX* b, MatXX* H);
-	Mat18f* adHTdeltaF;
-
-	Mat88* adHost;
-	Mat88* adTarget;
-
-	Mat88f* adHostF;
-	Mat88f* adTargetF;
-
-	VecC cPrior;
-	VecCf cDeltaF;
 #ifdef NEW_METHOD
-    VecCc cPrior_new_method;
+        void pcgReductor(VecXc AAq[], std::vector<MatXXc> *A, VecXc q,
+                         int min, int max, Vec10 *stat, int tid);
+        void compress_Jr_reductor(std::vector<MatXXc> *JJsp, std::vector<VecXc> *rrsp,
+                                  int min, int max, Vec10 *stat, int tid);
+#endif
+
+        VecX getStitchedDeltaF() const;
+
+        void resubstituteF_MT(VecX x, CalibHessian* HCalib, bool MT);
+        void resubstituteFPt(const VecCf &xc, Mat18f* xAd, int min, int max, Vec10* stats, int tid);
+
+        void accumulateAF_MT(MatXX &H, VecX &b, bool MT);
+
+        void orthogonalize(VecX* b, MatXX* H);
+        Mat18f* adHTdeltaF;
+
+        Mat88* adHost;
+        Mat88* adTarget;
+
+        Mat88f* adHostF;
+        Mat88f* adTargetF;
+
+        VecC cPrior;
+        VecCf cDeltaF;
+#ifdef NEW_METHOD
+        VecCc cPrior_new_method;
 //    VecCc cDeltaF_new_method;
 #endif
 
-	AccumulatedTopHessianSSE* accSSE_top_A;
+        AccumulatedTopHessianSSE* accSSE_top_A;
 
-	AccumulatedSCHessianSSE* accSSE_bot;
+        AccumulatedSCHessianSSE* accSSE_bot;
 
-	std::vector<EFPoint*> allPoints;
-	std::vector<EFPoint*> allPointsToMarg;
+        std::vector<EFPoint*> allPoints;
+        std::vector<EFPoint*> allPointsToMarg;
 #ifdef ROOTBA_PREPARE
-    std::vector<EFResidual *> my_stack[100];
+        std::vector<EFResidual *> my_stack[100];
 #endif
 
 };

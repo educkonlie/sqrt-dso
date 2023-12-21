@@ -35,7 +35,7 @@ namespace dso {
         for (int j = 0; j < cols; j++) {
             rkf_scalar pivot = Jl(j, j);
             for (int i = j + 1; i < nres; i++) {
-                if (std::abs(Jl(i, j)) < 1e-10)
+                if (std::abs(Jl(i, j)) < 1e-15)
                     continue;
                 rkf_scalar a = Jl(i, j);
                 rkf_scalar r = sqrt(pivot * pivot + a * a);
@@ -43,7 +43,7 @@ namespace dso {
                 rkf_scalar s = a / r;
                 pivot = r;
                 assert(std::isfinite(r));
-                assert(std::abs(r) > 1e-10);
+                assert(std::abs(r) > 1e-15);
 // 变0的，先到temp
                 temp1 = -s * Jl.row(j) + c * Jl.row(i);
                 temp2 = -s * Jp.row(j) + c * Jp.row(i);
@@ -70,7 +70,7 @@ namespace dso {
         for (int j = 0; j < cols; j++) {
             rkf_scalar pivot = Jl(j, j);
             for (int i = j + 1; i < nres; i++) {
-                if (std::abs(Jl(i, j)) < 1e-10)
+                if (std::abs(Jl(i, j)) < 1e-15)
                     continue;
                 rkf_scalar a = Jl(i, j);
                 rkf_scalar r = sqrt(pivot * pivot + a * a);
@@ -78,7 +78,7 @@ namespace dso {
                 rkf_scalar s = a / r;
                 pivot = r;
                 assert(std::isfinite(r));
-                assert(std::abs(r) > 1e-10);
+                assert(std::abs(r) > 1e-15);
 // 变0的，先到temp
                 temp1 = -s * Jp.row(j) + c * Jp.row(i);
                 temp2 = -s * Jl.row(j) + c * Jl.row(i);
@@ -97,8 +97,8 @@ namespace dso {
             }
         }
     }
-    void EnergyFunctional::qr3f(MatXXf &Jp, VecXf &Jl, VecXf &Jr) {
-        MatXXf temp1;
+    void EnergyFunctional::qr3f(MatXXfr &Jp, VecXf &Jl, VecXf &Jr) {
+        MatXXfr temp1;
         VecXf temp2, temp3;
         int nres = Jl.rows();
         int cols = Jl.cols();
@@ -106,17 +106,17 @@ namespace dso {
         // i: row
         // j: col
         for (int j = 0; j < cols; j++) {
-            float pivot = Jl(j, j);
+            rkf_scalar pivot = Jl(j, j);
             for (int i = j + 1; i < nres; i++) {
-                if (std::abs(Jl(i, j)) < 1e-10)
+                if (std::abs(Jl(i, j)) < 1e-15)
                     continue;
-                float a = Jl(i, j);
-                float r = sqrt(pivot * pivot + a * a);
-                float c = pivot / r;
-                float s = a / r;
+                rkf_scalar a = Jl(i, j);
+                rkf_scalar r = sqrt(pivot * pivot + a * a);
+                rkf_scalar c = pivot / r;
+                rkf_scalar s = a / r;
                 pivot = r;
                 assert(std::isfinite(r));
-                assert(std::abs(r) > 1e-10);
+                assert(std::abs(r) > 1e-15);
 // 变0的，先到temp
                 temp2 = -s * Jl.row(j) + c * Jl.row(i);
                 temp1 = -s * Jp.row(j) + c * Jp.row(i);
@@ -145,7 +145,7 @@ namespace dso {
         for (int j = 0; j < cols; j++) {
             rkf_scalar pivot = Jl(j, j);
             for (int i = j + 1; i < nres; i++) {
-                if (std::abs(Jl(i, j)) < 1e-10)
+                if (std::abs(Jl(i, j)) < 1e-15)
 //                if (Jl(i, j) == 0)
                     continue;
                 rkf_scalar a = Jl(i, j);
@@ -154,7 +154,7 @@ namespace dso {
                 rkf_scalar s = a / r;
                 pivot = r;
                 assert(std::isfinite(r));
-//                assert(std::abs(r) > 0);
+                assert(std::abs(r) > 1e-15);
 // 变0的，先到temp
                 temp1 = -s * Jl.row(j) + c * Jl.row(i);
 // 变大的.  j是pivot，在上面，i在下面

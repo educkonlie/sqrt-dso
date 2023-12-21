@@ -48,7 +48,7 @@ namespace dso
     template<int mode>
     void AccumulatedTopHessianSSE::addPoint(EFPoint* p, EnergyFunctional *ef, int tid)	// 0 = active, 1 = linearized, 2=marginalize
     {
-        MatXXf Jr1 = MatXXf::Zero(8 * FRAMES, CPARS + 8 * FRAMES);
+        MatXXfr Jr1 = MatXXfr::Zero(8 * FRAMES, CPARS + 8 * FRAMES);
         VecXf Jr2 = VecXf::Zero(8 * FRAMES);;
         VecXf Jl  = VecXf::Zero(8 * FRAMES);
 
@@ -123,12 +123,12 @@ namespace dso
             Jr1.block(8 * k, 0, 8, 4)
                     = J_th.block(0, 0, 8, 4);
             Jr1.block(8 * k, r->hostIDX * 8 + 4, 8, 8)
-                    = J_th.block(0, 4, 8, 8) * ef->adHostF[htIDX].transpose();
+                    = (J_th.block(0, 4, 8, 8) * ef->adHostF[htIDX].transpose());
             Jr1.block(8 * k, r->targetIDX * 8 + 4, 8, 8)
-                    = J_th.block(0, 4, 8, 8) * ef->adTargetF[htIDX].transpose();
+                    = (J_th.block(0, 4, 8, 8) * ef->adTargetF[htIDX].transpose());
 
             Jl.segment(8 * k, 8)
-                    = rJ->JIdx[0] * rJ->Jpdd(0, 0) + rJ->JIdx[1] * rJ->Jpdd(1, 0);
+                    = (rJ->JIdx[0] * rJ->Jpdd(0, 0) + rJ->JIdx[1] * rJ->Jpdd(1, 0));
 
             //! 打印host, target, C, xi, ab
             //! 上面的是重投影误差的偏导，另外还要有8×2的矩阵JIdx，即8维的residual和x, y的偏导
@@ -153,19 +153,19 @@ namespace dso
         Jr1.row(0).setZero();
         Jr2[0] = 0.0;
 
-        MatXXc Jr1_temp = Jr1.middleRows(1, 8 * k - 1);
-        VecXc  Jr2_temp = Jr2.segment(1, 8 * k - 1);
-//        for (int i = 0; i < Jr1_temp.rows(); i++) {
-//            float norm = Jr1_temp.row(i).norm();
-//            if (norm == 0)
-//                continue;
-//            norm = 1 / norm;
-//            Jr1_temp.row(i) *= norm;
-//            Jr2_temp.row(i) *= norm;
-//        }
+        MatXXc Jr1_temp = Jr1.middleRows(1, 8 * k - 1).cast<rkf_scalar>();
+        VecXc  Jr2_temp = Jr2.segment(1, 8 * k - 1).cast<rkf_scalar>();
+        for (int i = 0; i < Jr1_temp.rows(); i++) {
+            rkf_scalar norm = Jr1_temp.row(i).norm();
+            if (norm == 0)
+                continue;
+            norm = 1 / norm;
+            Jr1_temp.row(i) *= norm;
+            Jr2_temp.row(i) *= (norm);
+        }
 
-        p->Jr1 = Jr1_temp.cast<rkf_scalar>();
-        p->Jr2 = Jr2_temp.cast<rkf_scalar>();
+        p->Jr1 = Jr1_temp;
+        p->Jr2 = Jr2_temp;
 //        ef->compress_Jr(p->Jr1, p->Jr2);
 
         assert(p->Jr1.rows() == 8 * k - 1);

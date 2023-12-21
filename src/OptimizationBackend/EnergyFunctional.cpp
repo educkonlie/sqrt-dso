@@ -880,7 +880,7 @@ void EnergyFunctional::solveSystemF(int iteration, double lambda, CalibHessian* 
 
 #ifdef NEW_METHOD
 //! 加Damping
-    MatXXc Damping = 1e-8 * MatXXc::Identity(Js[0].cols(), Js[0].cols());
+    MatXXc Damping = 1e-3 * MatXXc::Identity(Js[0].cols(), Js[0].cols());
     Js.push_back(Damping);
     rs.push_back(VecXc::Zero(Js[0].cols()));
 #endif
@@ -956,15 +956,15 @@ void EnergyFunctional::solveSystemF(int iteration, double lambda, CalibHessian* 
 //    compress_Jr(JJ, rr);
 //    times_ACC4 += timer_ACC4.toc();
 
-//    timer_ACC4.tic();
+    timer_ACC4.tic();
 //    MatXXc JJJJ = JJ.transpose() * JJ;
 //    VecXc rrrr = JJ.transpose() * rr;
-//    times_ACC4 += timer_ACC4.toc();
+    times_ACC4 += timer_ACC4.toc();
 //    y = JJ.householderQr().solve(rr);
 //    y = JJJJ.ldlt().solve(rrrr);
 
 //    timer_ACC2.tic();
-//    pcg_orig(JJJJ, rrrr, y, 1e-3, 1000);
+//    pcg_orig(JJJJ, rrrr, y, 1e-6, 1000);
 //    leastsquare_pcg_orig(JJ, rr, y, 1e-2, 1000);
 //    times_ACC2 += timer_ACC2.toc();
 
