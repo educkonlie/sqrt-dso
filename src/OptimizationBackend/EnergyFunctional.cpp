@@ -823,39 +823,6 @@ void EnergyFunctional::solveSystemF(int iteration, double lambda, CalibHessian* 
     accumulateAF_MT(HA_top, bA_top, multiThreading);
     times_ACC1 += timer_ACC1.toc();
 
-#ifdef NEW_METHOD
-//    if (JM.rows() > 0) {
-//        Js.push_back(JM);
-//        rs.push_back(rM);
-//    } else {
-//        std::cout << "JM is empty" << std::endl;
-//    }
-//    std::cout << (JM.transpose() * JM).ldlt().solve(JM.transpose() * rM).transpose() << std::endl;
-//    std::cout << HM.ldlt().solve(bM).transpose() << std::endl;
-//    std::cout << "rkf 111" << std::endl;
-//    for (int i = 0; i < Js.size(); i++) {
-//        std::cout << "Js:\n" << Js[i] << std::endl;
-//        std::cout << "rs:\n" << rs[i].transpose() << std::endl;
-//    }
-
-//    MatXXc H_rkf = MatXXc::Zero(CPARS + nFrames * 8, CPARS + nFrames * 8);
-//    VecX b_rkf = VecX::Zero(CPARS + nFrames * 8);
-
-//    for (int i = 0; i < Js.size(); i++) {
-//        H_rkf += Js[i].transpose() * Js[i];
-//        b_rkf += Js[i].transpose() * rs[i];
-//    }
-
-//    std::cout << "rkf 112" << std::endl;
-//    VecXc x_new;
-//    pcgMT(red, &Js, &rs, this, x_new, 1e-10, 100, false);
-//    std::cout << x_new.transpose() << std::endl;
-//    std::cout << (H_rkf.transpose() * H_rkf).ldlt().solve(H_rkf.transpose() * b_rkf).transpose()
-//            << std::endl;
-//    std::cout << (HA_top.transpose() * HA_top).ldlt().solve(HA_top.transpose() * bA_top).transpose()
-//            << std::endl;
-#endif
-
     //! 这里的关键是zero点，也就是固定线性化点，之前制作HM, bM的时候，在固定线性化点做了一次优化，然后再回退，
     //! 即回退到了zero点，制作了HM，bM;
     //! 之后应该是在前端一直保存了zero点，所以每次要使用这个祖传HM, bM的时候，都需要现求一次state - state_zero
@@ -899,14 +866,22 @@ void EnergyFunctional::solveSystemF(int iteration, double lambda, CalibHessian* 
 //        rr.middleRows(m, rs[i].rows()) = rs[i];
 //        m += rs[i].rows();
 //    }
+    //! normalize full cols
+//    VecXc JJ_norms = VecXc::Zero(JJ.cols());
+//    for (int i = 0; i < JJ.cols(); i++) {
+//        JJ_norms(i) = JJ.col(i).norm();
+//        JJ.col(i) = JJ.col(i) / JJ_norms(i);
+//    }
+//    for (int i = 0; i < JJ.cols(); i++)
+//        JJ_norms(i) = 1.0 / JJ_norms(i);
 
 //    std::vector<MatXXc> JJs;
 //    std::vector<VecXc> rrs;
 //    m = 0;
-//    while (m + 10000 < JJ.rows()) {
-//        JJs.push_back(JJ.middleRows(m, 10000));
-//        rrs.push_back(rr.middleRows(m, 10000));
-//        m += 10000;
+//    while (m + 1000 < JJ.rows()) {
+//        JJs.push_back(JJ.middleRows(m, 1000));
+//        rrs.push_back(rr.middleRows(m, 1000));
+//        m += 1000;
 //    }
 //    JJs.push_back(JJ.middleRows(m, JJ.rows() - m));
 //    rrs.push_back(rr.middleRows(m, rr.rows() - m));
@@ -967,10 +942,13 @@ void EnergyFunctional::solveSystemF(int iteration, double lambda, CalibHessian* 
 //    pcg_orig(JJJJ, rrrr, y, 1e-6, 1000);
 //    leastsquare_pcg_orig(JJ, rr, y, 1e-2, 1000);
 //    times_ACC2 += timer_ACC2.toc();
+//    y = JJ_norms.asDiagonal() * y;
 
     timer_ACC2.tic();
     leastsquare_pcg_origMT(red, &Js, &rs, this, y, 1e-2, 1000, true);
     times_ACC2 += timer_ACC2.toc();
+
+//    y = JJ_norms.asDiagonal() * y;
 
     times_ACC5 += timer_ACC5.toc();
 
@@ -979,6 +957,7 @@ void EnergyFunctional::solveSystemF(int iteration, double lambda, CalibHessian* 
 //    timer_ACC4.tic();
 //    leastsquare_pcg_origMT(red, &Js, &rs, this,  yy, 1e-6, 1000, false);
 //    times_ACC4 += timer_ACC4.toc();
+
 
     std::cout << "............" << std::endl;
     std::cout << "qr  " << times_ACC1 << std::endl;

@@ -135,8 +135,8 @@ namespace dso {
             }
         }
     }
-    void EnergyFunctional::qr2(MatXXc &Jl) {
-        MatXXc temp1, temp2;
+    void EnergyFunctional::qr2(MatXXcr &Jl) {
+        MatXXcr temp1, temp2;
         int nres = Jl.rows();
         int cols = Jl.cols();
         assert(nres > 3);
@@ -236,6 +236,7 @@ namespace dso {
         r = r_new.bottomRows(r_new.rows() - 8);
     }
 
+#if 0
     void EnergyFunctional::no_marg_frame(MatXXc &J, VecXc &r, MatXXc &J_new, VecXc &r_new, int nframes)
     {
         MatXXc Jr = MatXXc::Zero(J.rows(), J.cols() + 1);
@@ -261,12 +262,13 @@ namespace dso {
         J_new.leftCols(CPARS) = J.middleCols(nframes * 8, CPARS);
         J_new.middleCols(CPARS, nframes * 8) = J.leftCols(nframes * 8);
     }
+#endif
 
     void EnergyFunctional::compress_Jr(MatXXc &J, VecXc &r)
     {
         if (J.rows() <  1 * J.cols() + 1)
             return;
-        MatXXc Jr = MatXXc::Zero(J.rows(), J.cols() + 1);
+        MatXXcr Jr = MatXXcr::Zero(J.rows(), J.cols() + 1);
         //! 组Jr
         Jr.leftCols(J.cols()) = J;
         Jr.rightCols(1) = r;

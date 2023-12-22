@@ -103,7 +103,7 @@ public:
     int num_of_iter;
 
     void qr(MatXXc &Jp, MatXXc &Jl);
-    void qr2(MatXXc &Jp);
+    void qr2(MatXXcr &Jp);
     void qr3(MatXXc &Jp, MatXXc &Jl, VecXc &Jr);
     void qr3f(MatXXfr &Jp, VecXf &Jl, VecXf &Jr);
     void test_qr();

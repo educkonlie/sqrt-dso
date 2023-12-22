@@ -115,6 +115,10 @@ namespace dso {
                                  EnergyFunctional const * const EF,
                                  VecXc &x, rkf_scalar tor, int maxiter, bool MT)
     {
+
+        static int num_of_iter = 0;
+        static int num_of_pcg = 0;
+        num_of_pcg++;
             int i = 0;
         x = VecXc::Zero((*A)[0].cols());
         VecXc lambda_point_inv = VecXc::Zero((*A)[0].cols());
@@ -225,7 +229,11 @@ namespace dso {
 #endif
             rkf_scalar alpha = delta_new / (d.transpose() * q);
             x = x + alpha * d;
+
+            assert(i < 900);
+
 //            VecXc temp_total = VecXc::Zero((*A)[0].cols());
+//            pcgReductor(&temp_total, A, x, 0, (*A).size(), NULL, -1);
 //            if (i % 50 == 0) {
 //                for (int j = 0; j < (*A).size(); j++) {
 //                    temp_total = temp_total + ((*A)[j].transpose() * ((*A)[j] * x));
@@ -244,11 +252,13 @@ namespace dso {
             rkf_scalar beta = delta_new / delta_old;
             d = s + beta * d;
             i = i + 1;
+            num_of_iter++;
         }
-        std::cout << "iter: " << i << std::endl;
+        std::cout << "iter:       " << i << std::endl;
+        std::cout << "total iter: " << num_of_iter << std::endl;
+        std::cout << "total iter / total pcg: " << num_of_iter / num_of_pcg << std::endl;
     }
 
-    int num_of_iter = 0;
     void EnergyFunctional::cg_orig(MatXXc &A, VecXc &b, VecXc &x, rkf_scalar tor, int maxiter)
     {
         int i = 0;
@@ -358,6 +368,9 @@ namespace dso {
     }
     void EnergyFunctional::leastsquare_pcg_orig(MatXXc &A, VecXc &b, VecXc &x, rkf_scalar tor, int maxiter)
     {
+        static int num_of_iter = 0;
+        static int num_of_pcg = 0;
+        num_of_pcg++;
         int i = 0;
 //        MatXXc M_inv = (A.transpose() * A).diagonal().asDiagonal().inverse();
 
@@ -408,7 +421,9 @@ namespace dso {
             d = s + beta * d;
             i++;
         }
-        std::cout << i << std::endl;
+        std::cout << "iters:        " << i << std::endl;
+        std::cout << "total iters:  " << num_of_iter << std::endl;
+        std::cout << "iters per pcg:" << num_of_iter / num_of_pcg << std::endl;
     }
 
 }
