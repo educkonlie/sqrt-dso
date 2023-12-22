@@ -153,7 +153,14 @@ namespace dso {
             }
         } else {
 //            MatXXc temp = MatXXc::Identity(CPARS + 8 * nframes, CPARS + 8 * nframes);
-            MatXXc temp = lambda_inv.topLeftCorner(CPARS, CPARS).inverse();
+//            MatXXc temp;
+//            temp.template selfadjointView<Eigen::Upper>().llt().solve(
+//                    MatX::Identity(pose_size, pose_size));
+
+            MatXXc temp =
+                    lambda_inv.topLeftCorner(CPARS,
+                                             CPARS).selfadjointView<Eigen::Upper>().llt().solve(
+                            MatXXc::Identity(CPARS, CPARS));
 //            temp.topLeftCorner(CPARS, CPARS) =
 //                    lambda_inv.topLeftCorner(CPARS, CPARS).inverse();
             lambda_inv.topLeftCorner(CPARS, CPARS) = temp;
@@ -164,9 +171,15 @@ namespace dso {
 //                    temp(i, i) = 1.0 / lambda_inv(i, i);
 //            }
             for (int k = 0; k < nframes; k++) {
-                temp = lambda_inv.block(CPARS + k * 8, CPARS + k * 8, 8, 8).inverse();
-                lambda_inv.block(CPARS + k * 8, CPARS + k * 8, 8, 8) = temp;
+                temp = lambda_inv.block(CPARS + k * 8, CPARS + k * 8,
+                                        8, 8).selfadjointView<Eigen::Upper>().llt().solve(
+                        MatXXc::Identity(8, 8));
+                lambda_inv.block(CPARS + k * 8, CPARS + k * 8, 8, 8) =
+                        temp;
             }
+//            std::cout << "lambda_inv:\n" << lambda_inv << std::endl;
+
+//            for (int i )
 //            lambda_inv.bottomRightCorner((*A)[0].cols() - CPARS, (*A)[0].cols() - CPARS) =
 //                    MatXXc::Identity((*A)[0].cols() - CPARS, (*A)[0].cols() - CPARS);
 //            lambda_inv = temp;

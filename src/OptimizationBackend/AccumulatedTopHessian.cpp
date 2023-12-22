@@ -155,14 +155,14 @@ namespace dso
 
         MatXXc Jr1_temp = Jr1.middleRows(1, 8 * k - 1).cast<rkf_scalar>();
         VecXc  Jr2_temp = Jr2.segment(1, 8 * k - 1).cast<rkf_scalar>();
-        for (int i = 0; i < Jr1_temp.rows(); i++) {
-            rkf_scalar norm = Jr1_temp.row(i).norm();
-            if (norm == 0)
-                continue;
-            norm = 1 / norm;
-            Jr1_temp.row(i) *= norm;
-            Jr2_temp.row(i) *= (norm);
-        }
+//        for (int i = 0; i < Jr1_temp.rows(); i++) {
+//            rkf_scalar norm = Jr1_temp.row(i).norm();
+//            if (norm == 0)
+//                continue;
+//            norm = 1 / norm;
+//            Jr1_temp.row(i) *= norm;
+//            Jr2_temp.row(i) *= (norm);
+//        }
 
         p->Jr1 = Jr1_temp;
         p->Jr2 = Jr2_temp;
