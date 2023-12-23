@@ -286,15 +286,15 @@ namespace dso {
     {
         if (J.rows() <  1 * J.cols() + 1)
             return;
-//        MatXXcr Jr = MatXXcr::Zero(J.rows(), J.cols() + 1);
-        MatXXc Jr = MatXXc::Zero(J.rows(), J.cols() + 1);
+        MatXXcr Jr = MatXXcr::Zero(J.rows(), J.cols() + 1);
+//        MatXXc Jr = MatXXc::Zero(J.rows(), J.cols() + 1);
         //! 组Jr
         Jr.leftCols(J.cols()) = J;
         Jr.rightCols(1) = r;
 
         //! qr分解，以及化简，即删除多余的零行
-//        qr2(Jr);
-        qr2_householder(Jr);
+        qr2(Jr);
+//        qr2_householder(Jr);
         Jr.conservativeResize(Jr.cols(), Jr.cols());
 //        MatXXc temp = Jr.topRows(Jr.cols());
 //        Jr = temp;
