@@ -167,6 +167,24 @@ namespace dso {
             }
         }
     }
+    void EnergyFunctional::qr2_householder(MatXXc &R)
+    {
+        int m = R.rows();
+        int n = R.cols();
+//    MatXX Q = MatXX::Identity(m, m);
+
+        for (int j = 0; j < n; j++) {
+            VecXc R_j = R.col(j).bottomRows(m - j);
+            rkf_scalar normx = R_j.norm();
+            int s = (R(j, j) > 0) ? -1 : 1;
+            rkf_scalar u1 = R(j, j) - s * normx;
+            VecXc w = R_j * (1 / u1);
+            w(0) = 1;
+            rkf_scalar tau = -s * u1 / normx;
+            MatXXc temp = R.bottomRows(m - j);
+            R.bottomRows(m - j) = temp - (tau * w) * (w.transpose() * temp);
+        }
+    }
 // struct of JM rM
 //  JM_marg   JM_remained   JM_CPARS  rM
 // 然后将上面整体进行QR分解，rM会比JM多一行非零，但这个是正常现象
@@ -268,13 +286,15 @@ namespace dso {
     {
         if (J.rows() <  1 * J.cols() + 1)
             return;
-        MatXXcr Jr = MatXXcr::Zero(J.rows(), J.cols() + 1);
+//        MatXXcr Jr = MatXXcr::Zero(J.rows(), J.cols() + 1);
+        MatXXc Jr = MatXXc::Zero(J.rows(), J.cols() + 1);
         //! 组Jr
         Jr.leftCols(J.cols()) = J;
         Jr.rightCols(1) = r;
 
         //! qr分解，以及化简，即删除多余的零行
-        qr2(Jr);
+//        qr2(Jr);
+        qr2_householder(Jr);
         Jr.conservativeResize(Jr.cols(), Jr.cols());
 //        MatXXc temp = Jr.topRows(Jr.cols());
 //        Jr = temp;

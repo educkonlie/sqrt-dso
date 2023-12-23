@@ -634,18 +634,23 @@ void EnergyFunctional::marginalizePointsF()
 
     std::vector<MatXXc> JMs;
     std::vector<VecXc> rMs;
+    int JMs_step = JM.rows() / NUM_THREADS + 1;
+    if (JMs_step < 1000)
+        JMs_step = 1000;
     m = 0;
     std::cout << "JM rows: " << JM.rows() << std::endl;
-    while (m + 3000 < JM.rows()) {
-        MatXXc temp1 = JM.middleRows(m, 3000);
-        VecXc temp2  = rM.middleRows(m, 3000);
+    while (m + JMs_step < JM.rows()) {
+        MatXXc temp1 = JM.middleRows(m, JMs_step);
+        VecXc temp2  = rM.middleRows(m, JMs_step);
         JMs.push_back(temp1);
         rMs.push_back(temp2);
-        m += 3000;
+        m += JMs_step;
     }
     JMs.push_back(JM.bottomRows(JM.rows() - m));
     rMs.push_back(rM.bottomRows(rM.rows() - m));
     std::cout << "JMs.size()" << JMs.size() << std::endl;
+    assert(JMs.size() <= NUM_THREADS);
+
     timer_ACC3.tic();
     compress_JrMT(red, &JMs, &rMs, this, true);
 //    compress_Jr(JM, rM);
@@ -852,20 +857,21 @@ void EnergyFunctional::solveSystemF(int iteration, double lambda, CalibHessian* 
     rs.push_back(VecXc::Zero(Js[0].cols()));
 #endif
 
-//    int total = 0;
-//    for (int i = 0; i < Js.size(); i++) {
-//        total += Js[i].rows();
-//    }
-//    std::cout << "total " << total << std::endl;
-//
-//    MatXXc JJ = MatXXc::Zero(total, Js[0].cols());
-//    VecXc rr = VecXc::Zero(total);
-//    int m = 0;
-//    for (int i = 0; i < Js.size(); i++) {
-//        JJ.middleRows(m, Js[i].rows()) = Js[i];
-//        rr.middleRows(m, rs[i].rows()) = rs[i];
-//        m += rs[i].rows();
-//    }
+#if 0
+    int total = 0;
+    for (int i = 0; i < Js.size(); i++) {
+        total += Js[i].rows();
+    }
+    std::cout << "total " << total << std::endl;
+
+    MatXXc JJ = MatXXc::Zero(total, Js[0].cols());
+    VecXc rr = VecXc::Zero(total);
+    int m = 0;
+    for (int i = 0; i < Js.size(); i++) {
+        JJ.middleRows(m, Js[i].rows()) = Js[i];
+        rr.middleRows(m, rs[i].rows()) = rs[i];
+        m += rs[i].rows();
+    }
     //! normalize full cols
 //    VecXc JJ_norms = VecXc::Zero(JJ.cols());
 //    for (int i = 0; i < JJ.cols(); i++) {
@@ -875,16 +881,24 @@ void EnergyFunctional::solveSystemF(int iteration, double lambda, CalibHessian* 
 //    for (int i = 0; i < JJ.cols(); i++)
 //        JJ_norms(i) = 1.0 / JJ_norms(i);
 
-//    std::vector<MatXXc> JJs;
-//    std::vector<VecXc> rrs;
-//    m = 0;
-//    while (m + 1000 < JJ.rows()) {
-//        JJs.push_back(JJ.middleRows(m, 1000));
-//        rrs.push_back(rr.middleRows(m, 1000));
-//        m += 1000;
-//    }
-//    JJs.push_back(JJ.middleRows(m, JJ.rows() - m));
-//    rrs.push_back(rr.middleRows(m, rr.rows() - m));
+    std::vector<MatXXc> JJs;
+    std::vector<VecXc> rrs;
+    int JJs_step = JJ.rows() / NUM_THREADS + 8;
+    m = 0;
+    while (m + JJs_step < JJ.rows()) {
+        JJs.push_back(JJ.middleRows(m, JJs_step));
+        rrs.push_back(rr.middleRows(m, JJs_step));
+        m += JJs_step;
+    }
+    JJs.push_back(JJ.middleRows(m, JJ.rows() - m));
+    rrs.push_back(rr.middleRows(m, rr.rows() - m));
+    assert(JJs.size() <= NUM_THREADS);
+    std::cout << "JJs.size: " << JJs.size() << std::endl;
+
+//    timer_ACC4.tic();
+//    compress_JrMT(red, &JJs, &rrs, this, true);
+//    times_ACC4 += timer_ACC4.toc();
+#endif
 
 //    std::vector<int> indices;
 //    for (int i = 0; i < JJs.size(); i++)
@@ -931,10 +945,10 @@ void EnergyFunctional::solveSystemF(int iteration, double lambda, CalibHessian* 
 //    compress_Jr(JJ, rr);
 //    times_ACC4 += timer_ACC4.toc();
 
-    timer_ACC4.tic();
+//    timer_ACC4.tic();
 //    MatXXc JJJJ = JJ.transpose() * JJ;
 //    VecXc rrrr = JJ.transpose() * rr;
-    times_ACC4 += timer_ACC4.toc();
+//    times_ACC4 += timer_ACC4.toc();
 //    y = JJ.householderQr().solve(rr);
 //    y = JJJJ.ldlt().solve(rrrr);
 
@@ -945,7 +959,7 @@ void EnergyFunctional::solveSystemF(int iteration, double lambda, CalibHessian* 
 //    y = JJ_norms.asDiagonal() * y;
 
     timer_ACC2.tic();
-    leastsquare_pcg_origMT(red, &Js, &rs, this, y, 1e-2, 1000, true);
+    leastsquare_pcg_origMT(red, &Js, &rs, this, y, 1e-2, 100, true);
     times_ACC2 += timer_ACC2.toc();
 
 //    y = JJ_norms.asDiagonal() * y;

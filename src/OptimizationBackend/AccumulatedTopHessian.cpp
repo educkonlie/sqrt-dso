@@ -153,8 +153,9 @@ namespace dso
         Jr1.row(0).setZero();
         Jr2[0] = 0.0;
 
-        MatXXc Jr1_temp = Jr1.middleRows(1, 8 * k - 1).cast<rkf_scalar>();
-        VecXc  Jr2_temp = Jr2.segment(1, 8 * k - 1).cast<rkf_scalar>();
+//        MatXXc Jr1_temp = Jr1.middleRows(1, 8 * k - 1).cast<rkf_scalar>();
+//        VecXc  Jr2_temp = Jr2.segment(1, 8 * k - 1).cast<rkf_scalar>();
+
 //        for (int i = 0; i < Jr1_temp.rows(); i++) {
 //            rkf_scalar norm = Jr1_temp.row(i).norm();
 //            if (norm == 0)
@@ -164,11 +165,14 @@ namespace dso
 //            Jr2_temp.row(i) *= (norm);
 //        }
 
-        p->Jr1 = Jr1_temp;
-        p->Jr2 = Jr2_temp;
+//        p->Jr1 = Jr1.middleRows(1, 8 * k - 1).cast<rkf_scalar>();;
+        p->Jr1 = Jr1.middleRows(0, 8 * k).cast<rkf_scalar>();;
+//        p->Jr2 = Jr2.segment(1, 8 * k - 1).cast<rkf_scalar>();
+        p->Jr2 = Jr2.segment(0, 8 * k).cast<rkf_scalar>();
 //        ef->compress_Jr(p->Jr1, p->Jr2);
 
-        assert(p->Jr1.rows() == 8 * k - 1);
+//        assert(p->Jr1.rows() == 8 * k - 1);
+        assert(p->Jr1.rows() == 8 * k);
 
         assert(p->Jr1.rows() > 0);
 

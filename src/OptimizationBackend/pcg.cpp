@@ -118,6 +118,7 @@ namespace dso {
 
         static int num_of_iter = 0;
         static int num_of_pcg = 0;
+        bool use_ldlt = false;
         num_of_pcg++;
             int i = 0;
         x = VecXc::Zero((*A)[0].cols());
@@ -142,14 +143,37 @@ namespace dso {
                 MatXXc temp = (*A)[j].leftCols(CPARS);
                 lambda_inv.topLeftCorner(CPARS, CPARS) +=
                         (temp.transpose() * temp);
+
                 for (int k = 0; k < nframes; k++) {
                     temp = (*A)[j].middleCols(CPARS + k * 8, 8);
                     lambda_inv.block(CPARS + k * 8, CPARS + k * 8, 8, 8) +=
                             (temp.transpose() * temp);
+
                 }
             }
             b_total += (*A)[j].transpose() * (*b)[j];
         }
+        if (lambda_inv.topLeftCorner(CPARS, CPARS).determinant() <= 0) {
+            std::cout << lambda_inv.topLeftCorner(CPARS, CPARS).diagonal().transpose() << std::endl;
+            lambda_inv.topLeftCorner(CPARS, CPARS) =
+//                    lambda_inv.topLeftCorner(CPARS, CPARS).diagonal().asDiagonal();
+                    MatXXc::Identity(CPARS, CPARS);
+            use_ldlt = true;
+        }
+        for (int l = 0; l < nframes; l++) {
+            if (lambda_inv.block(CPARS + l * 8, CPARS + l * 8,
+                                    8, 8).determinant() <= 0) {
+                std::cout << lambda_inv.block(CPARS + l * 8, CPARS + l * 8,
+                                              8, 8).diagonal().transpose() << std::endl;
+                lambda_inv.block(CPARS + l * 8, CPARS + l * 8,
+                                 8, 8) =
+//                        lambda_inv.block(CPARS + l * 8, CPARS + l * 8,
+//                                         8, 8).diagonal().asDiagonal();
+                        MatXXc::Identity(8, 8);
+                use_ldlt = true;
+            }
+        }
+
         if (!block_jacobi) {
 //            VecXc lambda_point = VecXc::Zero((*A)[0].cols());
             for (int k = 0; k < (*A)[0].cols(); k++) {
@@ -158,14 +182,12 @@ namespace dso {
         } else {
 //            MatXXc temp = MatXXc::Identity(CPARS + 8 * nframes, CPARS + 8 * nframes);
 //            MatXXc temp;
-//            temp.template selfadjointView<Eigen::Upper>().llt().solve(
-//                    MatX::Identity(pose_size, pose_size));
 
             MatXXc temp =
                     lambda_inv.topLeftCorner(CPARS,
                                              CPARS).selfadjointView<Eigen::Upper>().llt().solve(
                             MatXXc::Identity(CPARS, CPARS));
-//            temp.topLeftCorner(CPARS, CPARS) =
+//            MatXXc temp =
 //                    lambda_inv.topLeftCorner(CPARS, CPARS).inverse();
             lambda_inv.topLeftCorner(CPARS, CPARS) = temp;
 //            for (int i = CPARS; i < (*A)[0].cols(); i++) {
@@ -178,6 +200,8 @@ namespace dso {
                 temp = lambda_inv.block(CPARS + k * 8, CPARS + k * 8,
                                         8, 8).selfadjointView<Eigen::Upper>().llt().solve(
                         MatXXc::Identity(8, 8));
+//                temp = lambda_inv.block(CPARS + k * 8, CPARS + k * 8,
+//                                        8, 8).inverse();
                 lambda_inv.block(CPARS + k * 8, CPARS + k * 8, 8, 8) =
                         temp;
             }
@@ -232,6 +256,7 @@ namespace dso {
 
             assert(i < 900);
 
+            //! i % 50这一块还是要做的，可能就是这里导致偶尔会崩
 //            VecXc temp_total = VecXc::Zero((*A)[0].cols());
 //            pcgReductor(&temp_total, A, x, 0, (*A).size(), NULL, -1);
 //            if (i % 50 == 0) {
@@ -257,6 +282,11 @@ namespace dso {
         std::cout << "iter:       " << i << std::endl;
         std::cout << "total iter: " << num_of_iter << std::endl;
         std::cout << "total iter / total pcg: " << num_of_iter / num_of_pcg << std::endl;
+        if (use_ldlt) {
+            std::cout << "........use_ldlt == true........." << std::endl;
+//            exit(1);
+//            assert(false);
+        }
     }
 
     void EnergyFunctional::cg_orig(MatXXc &A, VecXc &b, VecXc &x, rkf_scalar tor, int maxiter)
