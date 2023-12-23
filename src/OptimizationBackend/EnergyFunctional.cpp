@@ -631,7 +631,7 @@ void EnergyFunctional::marginalizePointsF()
     }
 //    std::cout << "before compress JM, rM:\n"
 //              << (JM.transpose() * JM).ldlt().solve(JM.transpose() * rM).transpose() << std::endl;
-
+#if 1
     std::vector<MatXXc> JMs;
     std::vector<VecXc> rMs;
     int JMs_step = JM.rows() / NUM_THREADS + 1;
@@ -672,11 +672,11 @@ void EnergyFunctional::marginalizePointsF()
         rM.middleRows(m, rMs[i].rows()) = rMs[i];
         m += JMs[i].rows();
     }
-
-//    timer_ACC4.tic();
-//    compress_Jr(JM, rM);
-//    times_ACC4 += timer_ACC4.toc();
-
+#else
+    timer_ACC4.tic();
+    compress_Jr(JM, rM);
+    times_ACC4 += timer_ACC4.toc();
+#endif
 //    std::cout << "marg p single: " << times_ACC4 << std::endl;
 
 //    std::cout << "JM size: " << JM.rows() << " " << JM.cols() << std::endl;

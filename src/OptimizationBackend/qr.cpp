@@ -181,9 +181,13 @@ namespace dso {
             VecXc w = R_j * (1 / u1);
             w(0) = 1;
             rkf_scalar tau = -s * u1 / normx;
-            MatXXc temp = R.bottomRows(m - j);
-            R.bottomRows(m - j) = temp - (tau * w) * (w.transpose() * temp);
+            R.bottomRows(m - j) = R.bottomRows(m - j) -
+                    (tau * w) * (w.transpose() * R.bottomRows(m - j));
         }
+        for (int i = 0; i < m; i++)
+            for (int j = 0; j < n; j++)
+                if (std::abs(R(i, j)) < 1e-15)
+                    R(i, j) = 0.0;
     }
 // struct of JM rM
 //  JM_marg   JM_remained   JM_CPARS  rM
