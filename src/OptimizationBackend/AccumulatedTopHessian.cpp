@@ -49,6 +49,8 @@ namespace dso
     void AccumulatedTopHessianSSE::addPoint(EFPoint* p, EnergyFunctional *ef, int tid)	// 0 = active, 1 = linearized, 2=marginalize
     {
         MatXXfr Jr1 = MatXXfr::Zero(8 * FRAMES, CPARS + 8 * FRAMES);
+//        MatXXf Jr1 = MatXXf::Zero(8 * FRAMES, CPARS + 8 * FRAMES);
+
         VecXf Jr2 = VecXf::Zero(8 * FRAMES);;
         VecXf Jl  = VecXf::Zero(8 * FRAMES);
 
@@ -150,6 +152,7 @@ namespace dso
             }
         }
         ef->qr3f(Jr1, Jl, Jr2);
+//        ef->qr3f_householder(Jr1, Jl, Jr2);
         Jr1.row(0).setZero();
         Jr2[0] = 0.0;
 

@@ -105,8 +105,10 @@ public:
     void qr(MatXXc &Jp, MatXXc &Jl);
     void qr2(MatXXcr &Jp);
     void qr2_householder(MatXXc &R);
-    void qr3(MatXXc &Jp, MatXXc &Jl, VecXc &Jr);
+    void qr3(MatXXcr &Jp, MatXXcr &Jl, VecXc &Jr);
+    void qr3_householder(MatXXc &Jp, MatXXc &Jl, VecXc &Jr);
     void qr3f(MatXXfr &Jp, VecXf &Jl, VecXf &Jr);
+    void qr3f_householder(MatXXf &Jp, VecXf &Jl, VecXf &Jr);
     void test_qr();
 
 

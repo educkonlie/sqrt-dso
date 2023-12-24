@@ -895,9 +895,9 @@ void EnergyFunctional::solveSystemF(int iteration, double lambda, CalibHessian* 
     assert(JJs.size() <= NUM_THREADS);
     std::cout << "JJs.size: " << JJs.size() << std::endl;
 
-//    timer_ACC4.tic();
-//    compress_JrMT(red, &JJs, &rrs, this, true);
-//    times_ACC4 += timer_ACC4.toc();
+    timer_ACC4.tic();
+    compress_JrMT(red, &JJs, &rrs, this, true);
+    times_ACC4 += timer_ACC4.toc();
 #endif
 
 //    std::vector<int> indices;

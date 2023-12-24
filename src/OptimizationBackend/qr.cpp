@@ -59,8 +59,8 @@ namespace dso {
             }
         }
     }
-    void EnergyFunctional::qr3(MatXXc &Jp, MatXXc &Jl, VecXc &Jr) {
-        MatXXc temp1, temp2;
+    void EnergyFunctional::qr3(MatXXcr &Jp, MatXXcr &Jl, VecXc &Jr) {
+        MatXXcr temp1, temp2;
         VecXc temp3;
         int nres = Jl.rows();
         int cols = Jl.cols();
@@ -96,6 +96,34 @@ namespace dso {
                 Jl(i, j) = 0;
             }
         }
+    }
+    void EnergyFunctional::qr3_householder(MatXXc &Jp, MatXXc &Jl, VecXc &r)
+    {
+        int m = Jl.rows();
+        int n = Jl.cols();
+//    MatXX Q = MatXX::Identity(m, m);
+
+        for (int j = 0; j < n; j++) {
+            VecXc R_j = Jl.col(j).bottomRows(m - j);
+            rkf_scalar normx = R_j.norm();
+            if (std::abs(normx) <= 0.0)
+                continue;
+            int s = (Jl(j, j) > 0) ? -1 : 1;
+            rkf_scalar u1 = Jl(j, j) - s * normx;
+            VecXc w = R_j * (1 / u1);
+            w(0) = 1;
+            rkf_scalar tau = -s * u1 / normx;
+            Jl.bottomRows(m - j) = Jl.bottomRows(m - j) -
+                                   (tau * w) * (w.transpose() * Jl.bottomRows(m - j));
+            Jp.bottomRows(m - j) = Jp.bottomRows(m - j) -
+                                   (tau * w) * (w.transpose() * Jp.bottomRows(m - j));
+            r.bottomRows(m - j) = r.bottomRows(m - j) -
+                                  (tau * w) * (w.transpose() * r.bottomRows(m - j));
+        }
+//        for (int i = 0; i < m; i++)
+//            for (int j = 0; j < n; j++)
+//                if (std::abs(Jl(i, j)) < 1e-10)
+//                    Jl(i, j) = 0.0;
     }
     void EnergyFunctional::qr3f(MatXXfr &Jp, VecXf &Jl, VecXf &Jr) {
         MatXXfr temp1;
@@ -135,6 +163,34 @@ namespace dso {
             }
         }
     }
+    void EnergyFunctional::qr3f_householder(MatXXf &Jp, VecXf &Jl, VecXf &r)
+    {
+        int m = Jl.rows();
+        int n = Jl.cols();
+//    MatXX Q = MatXX::Identity(m, m);
+
+        for (int j = 0; j < n; j++) {
+            VecXf R_j = Jl.col(j).bottomRows(m - j);
+            rkf_scalar normx = R_j.norm();
+            if (std::abs(normx) <= 0.0)
+                continue;
+            int s = (Jl(j, j) > 0) ? -1 : 1;
+            rkf_scalar u1 = Jl(j, j) - s * normx;
+            VecXf w = R_j * (1 / u1);
+            w(0) = 1;
+            rkf_scalar tau = -s * u1 / normx;
+            Jl.bottomRows(m - j) = Jl.bottomRows(m - j) -
+                                   (tau * w) * (w.transpose() * Jl.bottomRows(m - j));
+            Jp.bottomRows(m - j) = Jp.bottomRows(m - j) -
+                                   (tau * w) * (w.transpose() * Jp.bottomRows(m - j));
+            r.bottomRows(m - j) = r.bottomRows(m - j) -
+                                  (tau * w) * (w.transpose() * r.bottomRows(m - j));
+        }
+//        for (int i = 0; i < m; i++)
+//            for (int j = 0; j < n; j++)
+//                if (std::abs(Jl(i, j)) < 1e-10)
+//                    Jl(i, j) = 0.0;
+    }
     void EnergyFunctional::qr2(MatXXcr &Jl) {
         MatXXcr temp1, temp2;
         int nres = Jl.rows();
@@ -173,20 +229,24 @@ namespace dso {
         int n = R.cols();
 //    MatXX Q = MatXX::Identity(m, m);
 
+        int k = 0;
         for (int j = 0; j < n; j++) {
-            VecXc R_j = R.col(j).bottomRows(m - j);
-            rkf_scalar normx = R_j.norm();
-            int s = (R(j, j) > 0) ? -1 : 1;
-            rkf_scalar u1 = R(j, j) - s * normx;
+            VecXc R_j = R.col(j).bottomRows(m - k);
+            double normx = R_j.norm();
+            if (std::abs(normx) <= 0.0)
+                continue;
+            int s = (R(k, j) > 0) ? -1 : 1;
+            double u1 = R(k, j) - s * normx;
             VecXc w = R_j * (1 / u1);
             w(0) = 1;
-            rkf_scalar tau = -s * u1 / normx;
-            R.bottomRows(m - j) = R.bottomRows(m - j) -
-                    (tau * w) * (w.transpose() * R.bottomRows(m - j));
+            double tau = -s * u1 / normx;
+            R.bottomRows(m - k) = R.bottomRows(m - k) -
+                    (tau * w) * (w.transpose() * R.bottomRows(m - k));
+            k++;
         }
         for (int i = 0; i < m; i++)
             for (int j = 0; j < n; j++)
-                if (std::abs(R(i, j)) < 1e-15)
+                if (std::abs(R(i, j)) < 1.0)
                     R(i, j) = 0.0;
     }
 // struct of JM rM
@@ -234,8 +294,8 @@ namespace dso {
 #endif
     void EnergyFunctional::marg_frame(MatXXc &J, VecXc &r, int idx)
     {
-        MatXXc J_new = MatXXc::Zero(J.rows(), J.cols() - 8);
-        MatXXc Jl = MatXXc::Zero(J.rows(), 8);
+        MatXXcr J_new = MatXXcr::Zero(J.rows(), J.cols() - 8);
+        MatXXcr Jl = MatXXcr::Zero(J.rows(), 8);
 
 //! 将需要marg的帧移到Jl
 //        if (idx != 0) {
@@ -249,6 +309,7 @@ namespace dso {
 
         //! qr分解
         qr3(J_new, Jl, r);
+//        qr3_householder(J_new, Jl, r);
 
 //        std::cout << "J_new:\n" << J_new << std::endl;
 
@@ -256,6 +317,9 @@ namespace dso {
         J = J_new.bottomRows(J_new.rows() - 8);
         VecXc r_new = r;
         r = r_new.bottomRows(r_new.rows() - 8);
+
+//        std::cout << "J_new:\n" << (J.transpose() * J).ldlt().solve(J.transpose() * r).transpose() << std::endl;
+//        std::cout << "J_new2:\n" << (J2.transpose() * J2).ldlt().solve(J2.transpose() * r2).transpose() << std::endl;
     }
 
 #if 0
@@ -290,22 +354,33 @@ namespace dso {
     {
         if (J.rows() <  1 * J.cols() + 1)
             return;
-//        MatXXcr Jr = MatXXcr::Zero(J.rows(), J.cols() + 1);
-        MatXXc Jr = MatXXc::Zero(J.rows(), J.cols() + 1);
+//        MatXXc Jr = MatXXc::Zero(J.rows(), J.cols() + 1);
+        MatXXcr Jr = MatXXcr::Zero(J.rows(), J.cols() + 1);
         //! 组Jr
         Jr.leftCols(J.cols()) = J;
         Jr.rightCols(1) = r;
+//        MatXXc Jr2 = Jr;
 
         //! qr分解，以及化简，即删除多余的零行
-//        qr2(Jr);
-        qr2_householder(Jr);
+        qr2(Jr);
+//        qr2_householder(Jr);
+
         Jr.conservativeResize(Jr.cols(), Jr.cols());
-//        MatXXc temp = Jr.topRows(Jr.cols());
-//        Jr = temp;
+
+//        std::cout << "qr2:\n" << Jr << std::endl;
+//        std::cout << "qr2_householder:\n" << Jr << std::endl;
 
         //! 将化简后的Jr分为J, r
         J = Jr.leftCols(Jr.cols() - 1);
         r = Jr.rightCols(1);
+
+//        std::cout << "r :\n" << r.transpose() << std::endl;
+//        std::cout << "r2:\n" << r2.transpose() << std::endl;
+
+//        std::cout << "qr2:\n"
+//                << (J.transpose() * J).ldlt().solve(J.transpose() * r).transpose() << std::endl;
+//        std::cout << "qr2_householder:\n"
+//                << (J2.transpose() * J2).ldlt().solve(J2.transpose() * r2).transpose() << std::endl;
     }
     void EnergyFunctional::compress_Jr_reductor(std::vector<MatXXc> *JJsp, std::vector<VecXc> *rrsp,
                                                 int min, int max, Vec10 *stat, int tid)
