@@ -137,8 +137,8 @@ double PointFrameResidual::linearize(CalibHessian* HCalib)
 		d_C_y[2] *= SCALE_C;
 		d_C_y[3] = (d_C_y[3]+1)*SCALE_C;
 #ifdef RKF_BASELINE
-        d_C_x[4] = 1e-3;
-        d_C_y[4] = 1e-3;
+        d_C_x[4] = 0.0;
+        d_C_y[4] = 0.0;
 #endif
 
         // x对xi的导数
@@ -382,8 +382,8 @@ double PointFrameResidual::linearizeStereo(CalibHessian* HCalib)
         //--------重投影误差 = f(相机内参)
         //DONE 这里可以加上对于baseline的优化
 #ifdef RKF_BASELINE
-		J->Jpdc[0] = Vec5f::Zero();
-		J->Jpdc[1] = Vec5f::Zero();
+		J->Jpdc[0] = VecCf::Zero();
+		J->Jpdc[1] = VecCf::Zero();
 #else
         J->Jpdc[0] = Vec4f::Zero();
         J->Jpdc[1] = Vec4f::Zero();

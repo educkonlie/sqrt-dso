@@ -59,6 +59,41 @@ namespace dso {
             }
         }
     }
+    void EnergyFunctional::qr_v(VecXc &Jp, MatXXcr &Jl) {
+        MatXXcr temp1;
+        rkf_scalar temp2;
+        int nres = Jl.rows();
+        int cols = Jl.cols();
+        assert(nres > 3);
+        // i: row
+        // j: col
+        for (int j = 0; j < cols; j++) {
+            rkf_scalar pivot = Jl(j, j);
+            for (int i = j + 1; i < nres; i++) {
+                if (std::abs(Jl(i, j)) < 1e-15)
+                    continue;
+                rkf_scalar a = Jl(i, j);
+                rkf_scalar r = sqrt(pivot * pivot + a * a);
+                rkf_scalar c = pivot / r;
+                rkf_scalar s = a / r;
+                pivot = r;
+                assert(std::isfinite(r));
+                assert(std::abs(r) > 1e-15);
+// 变0的，先到temp
+                temp1 = -s * Jl.row(j) + c * Jl.row(i);
+                temp2 = -s * Jp(j) + c * Jp(i);
+// 变大的.  j是pivot，在上面，i在下面
+                Jl.row(j) = c * Jl.row(j) + s * Jl.row(i);
+                Jp(j) = c * Jp(j) + s * Jp(i);
+// 变0的, temp => i
+                Jl.row(i) = temp1;
+                Jp(i) = temp2;
+
+                Jl(j, j) = pivot = r;
+                Jl(i, j) = 0;
+            }
+        }
+    }
     void EnergyFunctional::qr3(MatXXcr &Jp, MatXXcr &Jl, VecXc &Jr) {
         MatXXcr temp1, temp2;
         VecXc temp3;
@@ -125,6 +160,60 @@ namespace dso {
 //                if (std::abs(Jl(i, j)) < 1e-10)
 //                    Jl(i, j) = 0.0;
     }
+    //! 一个数乘一个向量
+    void EnergyFunctional::_scalar_mul_vector_avx(float s, float *B, float *C)
+    {
+        __m256 sum = _mm256_setzero_ps();  // Initialize a 256-bit vector to zero
+
+        __m256 a = _mm256_loadu_ps(B);  // Load a row of matrix A
+        __m256 b = _mm256_broadcast_ss(&s);  // Broadcast a value from matrix B
+//    sum = _mm256_add_ps(sum, _mm256_mul_ps(a, b));  // Multiply and accumulate
+        sum = _mm256_fmadd_ps(a, b, sum);
+
+        _mm256_storeu_ps(C, sum);  // Store the result in matrix C
+    }
+#if 0
+    void EnergyFunctional::qr3f_avx(MatXXfr &Jp, VecXf &Jl, VecXf &Jr) 
+    {
+        MatXXfr temp1;
+        VecXf temp2, temp3;
+        int nres = Jl.rows();
+        int cols = Jl.cols();
+        assert(nres > 3);
+        // i: row
+        // j: col
+        for (int j = 0; j < cols; j++) {
+            rkf_scalar pivot = Jl(j, j);
+            for (int i = j + 1; i < nres; i++) {
+                if (std::abs(Jl(i, j)) < 1e-15)
+                    continue;
+                rkf_scalar a = Jl(i, j);
+                rkf_scalar r = sqrt(pivot * pivot + a * a);
+                rkf_scalar c = pivot / r;
+                rkf_scalar s = a / r;
+                pivot = r;
+                assert(std::isfinite(r));
+                assert(std::abs(r) > 1e-15);
+// 变0的，先到temp
+                temp2 = -s * Jl.row(j) + c * Jl.row(i);
+                temp1 = -s * Jp.row(j) + c * Jp.row(i);
+//                for (int k = 0; k < Jp.cols(); k++)
+                temp3 = -s * Jr.row(j) + c * Jr.row(i);
+// 变大的.  j是pivot，在上面，i在下面
+                Jl.row(j) = c * Jl.row(j) + s * Jl.row(i);
+                Jp.row(j) = c * Jp.row(j) + s * Jp.row(i);
+                Jr.row(j) = c * Jr.row(j) + s * Jr.row(i);
+// 变0的, temp => i
+                Jl.row(i) = temp2;
+                Jp.row(i) = temp1;
+                Jr.row(i) = temp3;
+
+                Jl(j, j) = pivot = r;
+                Jl(i, j) = 0;
+            }
+        }
+    }
+#endif
     void EnergyFunctional::qr3f(MatXXfr &Jp, VecXf &Jl, VecXf &Jr) {
         MatXXfr temp1;
         VecXf temp2, temp3;
@@ -192,7 +281,7 @@ namespace dso {
 //                    Jl(i, j) = 0.0;
     }
     void EnergyFunctional::qr2(MatXXcr &Jl) {
-        MatXXcr temp1, temp2;
+        MatXXcr temp;
         int nres = Jl.rows();
         int cols = Jl.cols();
         assert(nres > 3);
@@ -212,15 +301,35 @@ namespace dso {
                 assert(std::isfinite(r));
                 assert(std::abs(r) > 1e-15);
 // 变0的，先到temp
-                temp1 = -s * Jl.row(j) + c * Jl.row(i);
+                temp = -s * Jl.row(j) + c * Jl.row(i);
 // 变大的.  j是pivot，在上面，i在下面
                 Jl.row(j) = c * Jl.row(j) + s * Jl.row(i);
 // 变0的, temp => i
-                Jl.row(i) = temp1;
+                Jl.row(i) = temp;
 
                 Jl(j, j) = pivot = r;
                 Jl(i, j) = 0;
             }
+        }
+    }
+    void EnergyFunctional::qr2_v(VecXc &Jl, int k)
+    {
+        rkf_scalar temp;
+        int nres = Jl.rows();
+        assert(nres > 3);
+        rkf_scalar r = Jl(k);
+        rkf_scalar a;
+        for (int i = k + 1; i < nres; i++) {
+            if (std::abs(Jl(i) < 1e-15))
+                continue;
+            a = Jl(i);
+            r = sqrt(r * r + a * a);
+
+            assert(std::isfinite(r));
+            assert(std::abs(r) > 1e-15);
+
+            Jl(k) = r;
+            Jl(i) = 0;
         }
     }
     void EnergyFunctional::qr2_householder(MatXXc &R)
@@ -354,6 +463,20 @@ namespace dso {
     {
         if (J.rows() <  1 * J.cols() + 1)
             return;
+//        std::cout << "before:\n"
+//                  << (J.transpose() * J).ldlt().solve(J.transpose() * r).transpose() << std::endl;
+        qr_v(r, J);
+        qr2_v(r, J.cols());
+//        std::cout << "J:\n" << J << std::endl;
+//        std::cout << "r:\n" << r.transpose() << std::endl;
+
+        J.conservativeResize(J.cols() + 1, J.cols());
+        r.conservativeResize(J.cols() + 1);
+//        std::cout << "after:\n"
+//                << (J.transpose() * J).ldlt().solve(J.transpose() * r).transpose() << std::endl;
+//        std::cout << "J:\n" << J << std::endl;
+//        std::cout << "r:\n" << r.transpose() << std::endl;
+#if 0
 //        MatXXc Jr = MatXXc::Zero(J.rows(), J.cols() + 1);
         MatXXcr Jr = MatXXcr::Zero(J.rows(), J.cols() + 1);
         //! 组Jr
@@ -381,6 +504,7 @@ namespace dso {
 //                << (J.transpose() * J).ldlt().solve(J.transpose() * r).transpose() << std::endl;
 //        std::cout << "qr2_householder:\n"
 //                << (J2.transpose() * J2).ldlt().solve(J2.transpose() * r2).transpose() << std::endl;
+#endif
     }
     void EnergyFunctional::compress_Jr_reductor(std::vector<MatXXc> *JJsp, std::vector<VecXc> *rrsp,
                                                 int min, int max, Vec10 *stat, int tid)
@@ -449,28 +573,30 @@ namespace dso {
 
     void EnergyFunctional::test_qr()
     {
-//    MatXX Jp = MatXX::Random(10, 10);
-        MatXXc I = MatXXc::Identity(10, 10);
-        MatXXc A = MatXXc::Random(10, 3);
+//        MatXXc I = MatXXc::Identity(10, 10);
+//        MatXXc A = MatXXc::Random(10, 3);
+//
+//        MatXXc Qt = I;
+//        MatXXc R = A;
+//
+//        qr(Qt, R);
+//        std::cout << "A\n" << A << std::endl;
+//        std::cout << "R\n" << R << std::endl;
+//        std::cout << "Q * R\n" << Qt.transpose() * R << std::endl;
 
-        MatXXc Qt = I;
-        MatXXc R = A;
-
-        qr(Qt, R);
-        std::cout << "A\n" << A << std::endl;
-        std::cout << "R\n" << R << std::endl;
-        std::cout << "Q * R\n" << Qt.transpose() * R << std::endl;
-        return;
+//        return;
 
         std::cout << "test 2............" << std::endl;
-        A = MatXXc::Random(20, 3 * 3);
-        MatXXc Al = A.block(0, 0, 20, 3);
-        MatXXc Ap = A.block(0, 3, 20, 3 * 2);
-        qr(Ap, Al);
+        MatXXc Jl = MatXXc::Random(20, 3 * 3);
+        VecXc Jp = VecXc::Random(20);
+        std::cout << "Jl\n" << Jl << std::endl;
+        std::cout << "Jp\n" << Jp.transpose() << std::endl;
+        std::cout << (Jl.transpose() * Jl).ldlt().solve(Jl.transpose() * Jp).transpose() << std::endl;
+        compress_Jr(Jl, Jp);
 
-        std::cout << "A:\n" << A << std::endl;
-        std::cout << "Ap:\n" << Ap << std::endl;
-        std::cout << "Al:\n" << Al << std::endl;
+        std::cout << "Jl\n" << Jl << std::endl;
+        std::cout << "Jp\n" << Jp.transpose() << std::endl;
+        std::cout << (Jl.transpose() * Jl).ldlt().solve(Jl.transpose() * Jp).transpose() << std::endl;
     }
 
 }

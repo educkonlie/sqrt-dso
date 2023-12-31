@@ -49,6 +49,12 @@ namespace dso
     double times_ACC4 = 0.0;
     TicToc timer_ACC5;
     double times_ACC5 = 0.0;
+    TicToc timer_ACC6;
+    double times_ACC6 = 0.0;
+    TicToc timer_ACC7;
+    double times_ACC7 = 0.0;
+    TicToc timer_ACC8;
+    double times_ACC8 = 0.0;
 
 bool EFAdjointsValid = false;
 bool EFIndicesValid = false;
@@ -631,7 +637,8 @@ void EnergyFunctional::marginalizePointsF()
     }
 //    std::cout << "before compress JM, rM:\n"
 //              << (JM.transpose() * JM).ldlt().solve(JM.transpose() * rM).transpose() << std::endl;
-#if 1
+#if 0
+    timer_ACC4.tic();
     std::vector<MatXXc> JMs;
     std::vector<VecXc> rMs;
     int JMs_step = JM.rows() / NUM_THREADS + 1;
@@ -656,7 +663,6 @@ void EnergyFunctional::marginalizePointsF()
 //    compress_Jr(JM, rM);
     times_ACC3 += timer_ACC3.toc();
 
-    std::cout << "marg p multi: " << times_ACC3 << std::endl;
 
     int rows_of_JM_compressed = 0;
     for (int i = 0; i < JMs.size(); i++)
@@ -672,14 +678,18 @@ void EnergyFunctional::marginalizePointsF()
         rM.middleRows(m, rMs[i].rows()) = rMs[i];
         m += JMs[i].rows();
     }
+    times_ACC4 += timer_ACC4.toc();
+
+    std::cout << "marg p multi: " << times_ACC3 << std::endl;
+    std::cout << "marg p total: " << times_ACC4 << std::endl;
 #else
     timer_ACC4.tic();
     compress_Jr(JM, rM);
     times_ACC4 += timer_ACC4.toc();
 #endif
-//    std::cout << "marg p single: " << times_ACC4 << std::endl;
+    std::cout << "marg p single: " << times_ACC4 << std::endl;
 
-//    std::cout << "JM size: " << JM.rows() << " " << JM.cols() << std::endl;
+    std::cout << "JM size: " << JM.rows() << " " << JM.cols() << std::endl;
 //    std::cout << "JM^T * rM:\n" << (JM.transpose() * rM).transpose() << std::endl;
 //    std::cout << "JM       :\n" << JM_new << std::endl;
 //    if (rM.rows() > 10)
@@ -857,7 +867,7 @@ void EnergyFunctional::solveSystemF(int iteration, double lambda, CalibHessian* 
     rs.push_back(VecXc::Zero(Js[0].cols()));
 #endif
 
-#if 0
+#if 1
     int total = 0;
     for (int i = 0; i < Js.size(); i++) {
         total += Js[i].rows();
@@ -872,6 +882,8 @@ void EnergyFunctional::solveSystemF(int iteration, double lambda, CalibHessian* 
         rr.middleRows(m, rs[i].rows()) = rs[i];
         m += rs[i].rows();
     }
+//    compress_Jr(JJ, rr);
+
     //! normalize full cols
 //    VecXc JJ_norms = VecXc::Zero(JJ.cols());
 //    for (int i = 0; i < JJ.cols(); i++) {
@@ -881,23 +893,25 @@ void EnergyFunctional::solveSystemF(int iteration, double lambda, CalibHessian* 
 //    for (int i = 0; i < JJ.cols(); i++)
 //        JJ_norms(i) = 1.0 / JJ_norms(i);
 
-    std::vector<MatXXc> JJs;
-    std::vector<VecXc> rrs;
-    int JJs_step = JJ.rows() / NUM_THREADS + 8;
-    m = 0;
-    while (m + JJs_step < JJ.rows()) {
-        JJs.push_back(JJ.middleRows(m, JJs_step));
-        rrs.push_back(rr.middleRows(m, JJs_step));
-        m += JJs_step;
-    }
-    JJs.push_back(JJ.middleRows(m, JJ.rows() - m));
-    rrs.push_back(rr.middleRows(m, rr.rows() - m));
-    assert(JJs.size() <= NUM_THREADS);
-    std::cout << "JJs.size: " << JJs.size() << std::endl;
+//    std::vector<MatXXc> JJs;
+//    std::vector<VecXc> rrs;
+//    JJs.push_back(JJ);
+//    rrs.push_back(rr);
+//    int JJs_step = JJ.rows() / NUM_THREADS + 8;
+//    m = 0;
+//    while (m + JJs_step < JJ.rows()) {
+//        JJs.push_back(JJ.middleRows(m, JJs_step));
+//        rrs.push_back(rr.middleRows(m, JJs_step));
+//        m += JJs_step;
+//    }
+//    JJs.push_back(JJ.middleRows(m, JJ.rows() - m));
+//    rrs.push_back(rr.middleRows(m, rr.rows() - m));
+//    assert(JJs.size() <= NUM_THREADS);
+//    std::cout << "JJs.size: " << JJs.size() << std::endl;
 
-    timer_ACC4.tic();
-    compress_JrMT(red, &JJs, &rrs, this, true);
-    times_ACC4 += timer_ACC4.toc();
+//    timer_ACC4.tic();
+//    compress_JrMT(red, &JJs, &rrs, this, true);
+//    times_ACC4 += timer_ACC4.toc();
 #endif
 
 //    std::vector<int> indices;
@@ -929,17 +943,21 @@ void EnergyFunctional::solveSystemF(int iteration, double lambda, CalibHessian* 
 //    compress_Jr(JJ, rr);
 
 #if 1
-//    Eigen::LeastSquaresConjugateGradient<MatXXc > lscg;
-//    lscg.setMaxIterations(1000);
-//    lscg.setTolerance(1e-2);
-//    lscg.compute(JJ);
-//    VecXc y = lscg.solve(rr);
+    timer_ACC2.tic();
+    Eigen::LeastSquaresConjugateGradient<MatXXc > lscg;
+    lscg.setMaxIterations(1000);
+    lscg.setTolerance(1e-2);
+    lscg.compute(JJ);
+    VecXc y = lscg.solve(rr);
+    times_ACC2 += timer_ACC2.toc();
 //    std::cout << "lscg  x:\n" << y.transpose() << std::endl;
-//    std::cout << "lscg iter: " << lscg.iterations() << std::endl;
-//    std::cout << "lscg error: " << lscg.error() << std::endl;
+    std::cout << "lscg iter: " << lscg.iterations() << std::endl;
+    std::cout << "lscg error: " << lscg.error() << std::endl;
 
 //    std::cout << "JJ cols:   " << JJ.cols() << std::endl;
-    VecXc y;
+
+//    VecXc y;
+
 //    cg(JJ, rr, y, 1e-6, 10);
 //    timer_ACC4.tic();
 //    compress_Jr(JJ, rr);
@@ -954,13 +972,14 @@ void EnergyFunctional::solveSystemF(int iteration, double lambda, CalibHessian* 
 
 //    timer_ACC2.tic();
 //    pcg_orig(JJJJ, rrrr, y, 1e-6, 1000);
-//    leastsquare_pcg_orig(JJ, rr, y, 1e-2, 1000);
+//    leastsquare_pcg_orig(JJ, rr, y, 1e-6, 1000);
 //    times_ACC2 += timer_ACC2.toc();
 //    y = JJ_norms.asDiagonal() * y;
 
-    timer_ACC2.tic();
-    leastsquare_pcg_origMT(red, &Js, &rs, this, y, 1e-2, 100, true);
-    times_ACC2 += timer_ACC2.toc();
+//    timer_ACC2.tic();
+//    y = JJ.householderQr().solve(rr);
+//    leastsquare_pcg_origMT(red, &Js, &rs, this, y, 1e-4, 20000, false);
+//    times_ACC2 += timer_ACC2.toc();
 
 //    y = JJ_norms.asDiagonal() * y;
 
@@ -975,8 +994,9 @@ void EnergyFunctional::solveSystemF(int iteration, double lambda, CalibHessian* 
 
     std::cout << "............" << std::endl;
     std::cout << "qr  " << times_ACC1 << std::endl;
+//    std::cout << "optimize" << times_ACC1 << std::endl;
     std::cout << "pcg " << times_ACC2 << std::endl;
-    std::cout <<"compress in solveS " << times_ACC4 << std::endl;
+//    std::cout <<"marginalize " << times_ACC4 << std::endl;
     std::cout <<"solveS " << times_ACC5 << std::endl;
 //    std::cout << num_of_iter << std::endl;
 //    y = JJJJ.ldlt().solve(rrrr);

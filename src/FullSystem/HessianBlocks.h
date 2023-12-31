@@ -314,7 +314,11 @@ struct CalibHessian {
 		initial_value[2] = cxG[0];
 		initial_value[3] = cyG[0];
 #ifdef RKF_BASELINE
-        initial_value[4] = 0.53717;
+//        initial_value[4] = 0.53717;
+        initial_value[4] = fxG[0];
+        initial_value[5] = fyG[0];
+        initial_value[6] = cxG[0];
+        initial_value[7] = cyG[0];
 #endif
 
 		setValueScaled(initial_value);
@@ -346,7 +350,11 @@ struct CalibHessian {
 		value_scaled[2] = SCALE_C * value[2];
 		value_scaled[3] = SCALE_C * value[3];
 #ifdef  RKF_BASELINE
+//        value_scaled[4] = SCALE_F * value[4];
         value_scaled[4] = SCALE_F * value[4];
+        value_scaled[5] = SCALE_F * value[5];
+        value_scaled[6] = SCALE_C * value[6];
+        value_scaled[7] = SCALE_C * value[7];
 #endif
 
 		this->value_scaledf = this->value_scaled.cast<float>();
@@ -355,7 +363,11 @@ struct CalibHessian {
 		this->value_scaledi[2] = - this->value_scaledf[2] / this->value_scaledf[0];
 		this->value_scaledi[3] = - this->value_scaledf[3] / this->value_scaledf[1];
 #ifdef RKF_BASELINE
-        this->value_scaledi[4] = this->value_scaledf[4];
+//        this->value_scaledi[4] = this->value_scaledf[4];
+        this->value_scaledi[4] = 1.0f / this->value_scaledf[0];
+        this->value_scaledi[5] = 1.0f / this->value_scaledf[1];
+        this->value_scaledi[6] = - this->value_scaledf[6] / this->value_scaledf[4];
+        this->value_scaledi[7] = - this->value_scaledf[7] / this->value_scaledf[5];
 #endif
 		this->value_minus_value_zero = this->value - this->value_zero;
 	};

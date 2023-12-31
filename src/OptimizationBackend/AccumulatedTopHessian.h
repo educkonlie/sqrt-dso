@@ -48,14 +48,16 @@ public:
 			acc[tid]=0;
 			nframes[tid]=0;
 		}
-//        myH = NULL;
+        myH = NULL;
+        myJ = NULL;
 	};
 	inline ~AccumulatedTopHessianSSE()
 	{
 		for(int tid=0;tid < NUM_THREADS; tid++) {
 			if(acc[tid] != 0) delete[] acc[tid];
 		}
-//        if (myH != 0) delete[] myH;
+        if (myH != 0) delete[] myH;
+        if (myJ != 0) delete[] myJ;
 	};
 
 	inline void setZero(int nFrames, int min=0, int max=1, Vec10* stats=0, int tid=0)
@@ -63,13 +65,16 @@ public:
 		if(nFrames != nframes[tid]) {
 			if(acc[tid] != 0) delete[] acc[tid];
             acc[tid] = new AccumulatorApprox[nFrames*nFrames];
-//            if(myH != 0) delete[] myH;
-//            myH = new Mat1313f[nFrames * nFrames];
+            if(myH != 0) delete[] myH;
+            if(myJ != 0) delete[] myJ;
+            myH = new Mat1313f[nFrames * nFrames];
+            myJ = new MatXXcr[nFrames * nFrames];
 		}
 
 		for(int i=0;i<nFrames*nFrames;i++) {
             acc[tid][i].initialize();
-//            myH[i].setZero();
+            myH[i].setZero();
+            myJ[i] = MatXXcr::Zero(0, 13);
         }
 
 		nframes[tid]=nFrames;
@@ -78,6 +83,12 @@ public:
 	}
 	void stitchDouble(EnergyFunctional *EF,
                       bool usePrior, bool useDelta, int tid=0);
+#ifdef ROOTBA
+        void qr2f(MatXXfr &Jp, VecXf &Jl);
+        void qr3f(MatXXfr &Jp, VecXf &Jl, VecXf &Jr);
+        void qr3f_householder(MatXXf &Jp, VecXf &Jl, VecXf &Jr);
+        void qr2f_householder(MatXXf &Jp, VecXf &Jl);
+#endif
 
 #if 1
 	template<int mode> void addPoint(EFPoint* p, EnergyFunctional *ef, int tid=0);
@@ -91,7 +102,8 @@ public:
 	EIGEN_ALIGN16 AccumulatorApprox* acc[NUM_THREADS];
 	int nres[NUM_THREADS];
 
-//    Mat1313f *myH;
+    Mat1313f *myH;
+    MatXXcr *myJ;
 
 private:
 

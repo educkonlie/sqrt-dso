@@ -31,6 +31,7 @@
 #include <ctime>
 #include <cstdlib>
 #include <chrono>
+#include <immintrin.h>
 
 
 namespace dso
@@ -43,7 +44,7 @@ namespace dso
 
 
 #define MAX_RES_PER_POINT 8
-#define NUM_THREADS 15
+#define NUM_THREADS 1
 
 
 #define todouble(x) (x).cast<double>()
@@ -62,7 +63,7 @@ typedef Sophus::SO3d SO3;
 
 //#define RKF_BASELINE
 #ifdef RKF_BASELINE
-#define CPARS 5    // 似乎是相机内参
+#define CPARS 8    // 似乎是相机内参
 #else
 #define CPARS 4    // 似乎是相机内参
 #endif
@@ -71,8 +72,8 @@ typedef Sophus::SO3d SO3;
 #ifdef NEW_METHOD
 #define rkf_scalar float
 typedef Eigen::Matrix<rkf_scalar, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> MatXXcr;
-typedef Eigen::Matrix<rkf_scalar, Eigen::Dynamic, Eigen::Dynamic, Eigen::ColMajor> MatXXc;
-//typedef Eigen::Matrix<rkf_scalar, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> MatXXc;
+//typedef Eigen::Matrix<rkf_scalar, Eigen::Dynamic, Eigen::Dynamic, Eigen::ColMajor> MatXXc;
+typedef Eigen::Matrix<rkf_scalar, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> MatXXc;
 typedef Eigen::Matrix<rkf_scalar, Eigen::Dynamic, 1> VecXc;
 typedef Eigen::Matrix<rkf_scalar, 8, 1> Vec8c;
 //! 即对所有残差都进行compress_Jr压缩
@@ -239,6 +240,22 @@ class TicToc {
     private:
         std::chrono::time_point<std::chrono::system_clock> start, end;
 };
+    extern TicToc timer_ACC1;
+    extern double times_ACC1;
+    extern TicToc timer_ACC2;
+    extern double times_ACC2;
+    extern TicToc timer_ACC3;
+    extern double times_ACC3;
+    extern TicToc timer_ACC4;
+    extern double times_ACC4;
+    extern TicToc timer_ACC5;
+    extern double times_ACC5;
+    extern TicToc timer_ACC6;
+    extern double times_ACC6;
+    extern TicToc timer_ACC7;
+    extern double times_ACC7;
+    extern TicToc timer_ACC8;
+    extern double times_ACC8;
 
 }
 

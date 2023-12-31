@@ -1277,7 +1277,9 @@ void FullSystem::makeKeyFrame( FrameHessian* fh)
 
 	fh->frameEnergyTH = frameHessians.back()->frameEnergyTH;
     std::cout << "optimize start" << std::endl;
+//    timer_ACC1.tic();
 	float rmse = optimize(setting_maxOptIterations);
+//    times_ACC1 += timer_ACC1.toc();
     std::cout << "optimize end" << std::endl;
 //    std::cout << "rmse: " << rmse << std::endl;
 
@@ -1329,7 +1331,9 @@ void FullSystem::makeKeyFrame( FrameHessian* fh)
 			ef->lastNullspaces_affB);
 // 	LOG(INFO)<<"ef->marginalizePointsF();";
     std::cout << "marginalizePointsF" << std::endl;
+    timer_ACC4.tic();
 	ef->marginalizePointsF();
+    times_ACC4 += timer_ACC4.toc();
     std::cout << "marginalizePointsF end" << std::endl;
 
 // 	LOG(INFO)<<"makeNewTraces";

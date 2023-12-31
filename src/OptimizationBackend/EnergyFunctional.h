@@ -103,7 +103,9 @@ public:
     int num_of_iter;
 
     void qr(MatXXc &Jp, MatXXc &Jl);
+    void qr_v(VecXc &Jp, MatXXcr &Jl);
     void qr2(MatXXcr &Jp);
+    void qr2_v(VecXc &Jl, int k);
     void qr2_householder(MatXXc &R);
     void qr3(MatXXcr &Jp, MatXXcr &Jl, VecXc &Jr);
     void qr3_householder(MatXXc &Jp, MatXXc &Jl, VecXc &Jr);
@@ -168,6 +170,9 @@ private:
         void accumulateAF_MT(MatXX &H, VecX &b, bool MT);
 
         void orthogonalize(VecX* b, MatXX* H);
+
+        void _scalar_mul_vector_avx(float s, float *B, float *C);
+
         Mat18f* adHTdeltaF;
 
         Mat88* adHost;

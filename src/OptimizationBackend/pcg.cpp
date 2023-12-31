@@ -116,6 +116,8 @@ namespace dso {
                                  VecXc &x, rkf_scalar tor, int maxiter, bool MT)
     {
 
+            timer_ACC6.tic();
+
         static int num_of_iter = 0;
         static int num_of_pcg = 0;
         bool use_ldlt = false;
@@ -228,6 +230,8 @@ namespace dso {
 
         std::cout << "delta_0: " << delta_0 << std::endl;
 
+        times_ACC6 += timer_ACC6.toc();
+        timer_ACC7.tic();
         while (i < maxiter && delta_new > tor * tor * delta_0) {
             VecXc q = VecXc::Zero((*A)[0].cols());
             if (!MT) {
@@ -279,9 +283,12 @@ namespace dso {
             i = i + 1;
             num_of_iter++;
         }
+        times_ACC7 += timer_ACC7.toc();
         std::cout << "iter:       " << i << std::endl;
         std::cout << "total iter: " << num_of_iter << std::endl;
         std::cout << "total iter / total pcg: " << num_of_iter / num_of_pcg << std::endl;
+        std::cout << "pcg p:  " << times_ACC6 << std::endl;
+        std::cout << "pcg cg: " << times_ACC7 << std::endl;
         if (use_ldlt) {
             std::cout << "........use_ldlt == true........." << std::endl;
 //            exit(1);
