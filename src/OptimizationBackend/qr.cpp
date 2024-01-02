@@ -312,6 +312,38 @@ namespace dso {
             }
         }
     }
+    void EnergyFunctional::qr2f(MatXXfr &Jl) {
+        MatXXfr temp;
+        int nres = Jl.rows();
+        int cols = Jl.cols();
+        assert(nres > 3);
+        // i: row
+        // j: col
+        for (int j = 0; j < cols; j++) {
+            float pivot = Jl(j, j);
+            for (int i = j + 1; i < nres; i++) {
+                if (std::abs(Jl(i, j)) < 1e-15)
+//                if (Jl(i, j) == 0)
+                    continue;
+                float a = Jl(i, j);
+                float r = sqrt(pivot * pivot + a * a);
+                float c = pivot / r;
+                float s = a / r;
+                pivot = r;
+                assert(std::isfinite(r));
+                assert(std::abs(r) > 1e-15);
+// 变0的，先到temp
+                temp = -s * Jl.row(j) + c * Jl.row(i);
+// 变大的.  j是pivot，在上面，i在下面
+                Jl.row(j) = c * Jl.row(j) + s * Jl.row(i);
+// 变0的, temp => i
+                Jl.row(i) = temp;
+
+                Jl(j, j) = pivot = r;
+                Jl(i, j) = 0;
+            }
+        }
+    }
     void EnergyFunctional::qr2_v(VecXc &Jl, int k)
     {
         rkf_scalar temp;

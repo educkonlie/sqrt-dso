@@ -39,165 +39,6 @@
 namespace dso
 {
     //   Top的addPoint和Bot的addPoint
-#if 0
-#ifndef FRAMES
-#define FRAMES (nframes[0])
-//#define FRAMES (8)
-#endif
-
-    template<int mode>
-    void AccumulatedTopHessianSSE::addPoint(EFPoint* p, EnergyFunctional *ef, int tid)	// 0 = active, 1 = linearized, 2=marginalize
-    {
-        MatXXfr Jr1 = MatXXfr::Zero(8 * FRAMES, CPARS + 8 * FRAMES);
-//        MatXXf Jr1 = MatXXf::Zero(8 * FRAMES, CPARS + 8 * FRAMES);
-
-        VecXf Jr2 = VecXf::Zero(8 * FRAMES);;
-        VecXf Jl  = VecXf::Zero(8 * FRAMES);
-
-        p->Jr1 = MatXXc::Zero(0, 0);
-        p->Jr2 = VecXc::Zero(0);
-
-        assert(mode==0 || mode==2);
-
-        VecCf dc = ef->cDeltaF;
-
-        float bd_acc=0;
-        float Hdd_acc=0;
-        VecCf  Hcd_acc = VecCf::Zero();
-
-        //! 对该点所有的残差计算相应的矩阵块。Top里的是该残差对应的C, xi部分的偏导，Sch里的是该残差对应的舒尔补
-        int k = 0;
-
-        int ngoodres = 0;
-        std::vector<int > target_id;
-
-        for(EFResidual* r : p->residualsAll) {
-            if(mode==0) {
-                if(r->isActive()) ngoodres++;
-                assert(!r->isLinearized);
-                if(r->isLinearized || !r->isActive()) continue;
-            }
-            if(mode==2) {
-                if(!r->isActive()) continue;
-                assert(r->isLinearized);
-            }
-
-            RawResidualJacobian* rJ = r->J;
-            int htIDX = r->hostIDX + r->targetIDX*nframes[tid];
-            target_id.push_back(r->targetIDX);
-
-            Mat18f dp = ef->adHTdeltaF[htIDX];
-
-            VecNRf resApprox;
-            if(mode==0)
-                resApprox = rJ->resF;
-            if(mode==2)
-                resApprox = r->res_toZeroF;
-
-            // need to compute JI^T * r, and Jab^T * r. (both are 2-vectors).
-            Vec2f JI_r(0,0);
-            Vec2f Jab_r(0,0);
-            float rr=0;
-            for(int i=0;i<patternNum;i++) {
-                JI_r[0] += resApprox[i] *rJ->JIdx[0][i];
-                JI_r[1] += resApprox[i] *rJ->JIdx[1][i];
-                Jab_r[0] += resApprox[i] *rJ->JabF[0][i];
-                Jab_r[1] += resApprox[i] *rJ->JabF[1][i];
-                rr += resApprox[i]*resApprox[i];
-            }
-            Vec2f Ji2_Jpdd = rJ->JIdx2 * rJ->Jpdd;
-            bd_acc +=  JI_r[0]*rJ->Jpdd[0] + JI_r[1]*rJ->Jpdd[1];
-            Hdd_acc += Ji2_Jpdd.dot(rJ->Jpdd);
-            Hcd_acc += rJ->Jpdc[0]*Ji2_Jpdd[0] + rJ->Jpdc[1]*Ji2_Jpdd[1];
-#ifdef USE_MYH
-//            timer_ACC1.tic();
-            //! 上面的是重投影误差的偏导，另外还要有8×2的矩阵JIdx，即8维的residual和x, y的偏导
-            Eigen::Matrix<float, 8, 12> J_th = Eigen::Matrix<float, 8, 12>::Zero();
-            J_th.block<8, 4>(0, 0) = rJ->JIdx[0] * rJ->Jpdc[0].transpose() +
-                                     rJ->JIdx[1] * rJ->Jpdc[1].transpose();
-            J_th.block<8, 6>(0, 4) = rJ->JIdx[0] * rJ->Jpdxi[0].transpose() +
-                                     rJ->JIdx[1] * rJ->Jpdxi[1].transpose();
-            J_th.block<8, 1>(0, 10) = rJ->JabF[0];
-            J_th.block<8, 1>(0, 11) = rJ->JabF[1];
-            Jr2.segment(8 * k, 8) += resApprox;
-#endif
-
-            Jr1.block(8 * k, 0, 8, 4)
-                    = J_th.block(0, 0, 8, 4);
-            Jr1.block(8 * k, r->hostIDX * 8 + 4, 8, 8)
-                    = (J_th.block(0, 4, 8, 8) * ef->adHostF[htIDX].transpose());
-            Jr1.block(8 * k, r->targetIDX * 8 + 4, 8, 8)
-                    = (J_th.block(0, 4, 8, 8) * ef->adTargetF[htIDX].transpose());
-
-            Jl.segment(8 * k, 8)
-                    = (rJ->JIdx[0] * rJ->Jpdd(0, 0) + rJ->JIdx[1] * rJ->Jpdd(1, 0));
-
-            //! 打印host, target, C, xi, ab
-            //! 上面的是重投影误差的偏导，另外还要有8×2的矩阵JIdx，即8维的residual和x, y的偏导
-
-            nres[tid]++;
-            k++;
-            assert(k <= FRAMES);
-        }
-        if (mode == 0) {
-            if (ngoodres == 0) {
-                p->HdiF = 0;
-                p->bdSumF = 0;
-                p->data->idepth_hessian = 0;
-                p->data->maxRelBaseline = 0;
-                p->Jr1 = MatXXc::Zero(0, 0);
-                p->Jr2 = VecXc::Zero(0);
-                assert(p->Jr1.rows() == 0);
-                return;
-            }
-        }
-        ef->qr3f(Jr1, Jl, Jr2);
-//        ef->qr3f_householder(Jr1, Jl, Jr2);
-        Jr1.row(0).setZero();
-        Jr2[0] = 0.0;
-
-//        MatXXc Jr1_temp = Jr1.middleRows(1, 8 * k - 1).cast<rkf_scalar>();
-//        VecXc  Jr2_temp = Jr2.segment(1, 8 * k - 1).cast<rkf_scalar>();
-
-//        for (int i = 0; i < Jr1_temp.rows(); i++) {
-//            rkf_scalar norm = Jr1_temp.row(i).norm();
-//            if (norm == 0)
-//                continue;
-//            norm = 1 / norm;
-//            Jr1_temp.row(i) *= norm;
-//            Jr2_temp.row(i) *= (norm);
-//        }
-
-//        p->Jr1 = Jr1.middleRows(1, 8 * k - 1).cast<rkf_scalar>();;
-        p->Jr1 = Jr1.middleRows(0, 8 * k).cast<rkf_scalar>();;
-//        p->Jr2 = Jr2.segment(1, 8 * k - 1).cast<rkf_scalar>();
-        p->Jr2 = Jr2.segment(0, 8 * k).cast<rkf_scalar>();
-//        ef->compress_Jr(p->Jr1, p->Jr2);
-
-//        assert(p->Jr1.rows() == 8 * k - 1);
-        assert(p->Jr1.rows() == 8 * k);
-
-        assert(p->Jr1.rows() > 0);
-
-        if (mode == 2) {
-            //! 将所有的Jr1, Jr2合并入ef->JM, ef->rM
-        }
-
-        p->Hdd_accAF = Hdd_acc;
-        p->bd_accAF = bd_acc;
-        p->Hcd_accAF = Hcd_acc;
-
-        float Hi = p->Hdd_accAF + p->priorF;
-        if(Hi < 1e-10) Hi = 1e-10;
-
-        // 逆深度的信息矩阵，因为逆深度是一维，所以是一个float，逆深度的协方差即1.0 / H
-        p->data->idepth_hessian=Hi;
-
-        // 原来HdiF即是协方差
-        p->HdiF = 1.0 / Hi;
-        p->bdSumF = p->bd_accAF;
-    }
-#endif
 #ifndef FRAMES
 #define FRAMES (nframes[0])
 //#define FRAMES (8)
@@ -269,11 +110,6 @@ namespace dso
             bd_acc +=  JI_r[0]*rJ->Jpdd[0] + JI_r[1]*rJ->Jpdd[1];
             Hdd_acc += Ji2_Jpdd.dot(rJ->Jpdd);
             Hcd_acc += rJ->Jpdc[0]*Ji2_Jpdd[0] + rJ->Jpdc[1]*Ji2_Jpdd[1];
-//            if (r->data->stereoResidualFlag) {
-//                for (int l = 0; l < 8; l++)
-//                    Jl[0] += resApprox[l];
-//                continue;
-//            }
 #ifdef USE_MYH
             timer_ACC1.tic();
             //! 上面的是重投影误差的偏导，另外还要有8×2的矩阵JIdx，即8维的residual和x, y的偏导
@@ -326,7 +162,7 @@ namespace dso
             timer_ACC3.tic();
 
 //            this->myH[htIDX] += Jp.transpose() * Jp;
-            add_Jr(this->myJ[htIDX], Jp);
+            this->myJ[htIDX].push_back(Jp);
 
             times_ACC3 += timer_ACC3.toc();
 
@@ -345,6 +181,8 @@ namespace dso
                 p->bdSumF = 0;
                 p->data->idepth_hessian = 0;
                 p->data->maxRelBaseline = 0;
+                p->Jr1 = MatXXc::Zero(0, 0);
+                p->Jr2 = VecXc::Zero(0);
                 return;
             }
         }
@@ -401,6 +239,7 @@ void AccumulatedTopHessianSSE::stitchDouble(EnergyFunctional *EF, bool usePrior,
     MatXXc J_temp = MatXXc::Zero(CPARS, nframes[tid] * 8 + CPARS);
     VecXc r_temp = VecXc::Zero(CPARS);
 
+
     for(int h=0;h<nframes[tid];h++)
         for(int t=0;t<nframes[tid];t++) {
             //! h:[0, nframes - 1], t:[0, nframes - 1]
@@ -408,18 +247,25 @@ void AccumulatedTopHessianSSE::stitchDouble(EnergyFunctional *EF, bool usePrior,
             int tIdx = CPARS + t * 8;
             int aidx = h + nframes[tid] * t;
 //            MatPCPC accH = myH[aidx].cast<myscalar>();
-            EF->compress_Jr(myJ[aidx]);
-            MatXXfr temp1 = MatXXfr::Zero(myJ[aidx].rows(), CPARS + nframes[tid] * 8);
-            VecXf temp2 = VecXf::Zero(myJ[aidx].rows());
-            temp1.leftCols(CPARS)
-                    = myJ[aidx].leftCols(CPARS);
-            temp1.middleCols(hIdx, 8)
-                    = myJ[aidx].middleCols(CPARS, 8) * EF->adHostF[aidx].transpose();
-            temp1.middleCols(tIdx, 8)
-                    = myJ[aidx].middleCols(CPARS, 8) * EF->adTargetF[aidx].transpose();
-            temp2 = myJ[aidx].rightCols(1);
-            J.push_back(temp1);
-            r.push_back(temp2);
+            MatXXfr temp1 = MatXXfr::Zero(this->myJ[aidx].size() * 8, CPARS + 8);
+            for (int i = 0; i < myJ[aidx].size(); i++)
+                temp1.middleRows(i * 8, 8) = (this->myJ[aidx])[i];
+            EF->qr2f(temp1);
+//        qr2_householder(Jr);
+            temp1.conservativeResize(temp1.cols(), temp1.cols());
+//            EF->compress_Jr(temp1);
+
+            MatXXfr temp2 = MatXXfr::Zero(temp1.rows(), CPARS + nframes[tid] * 8);
+            VecXf temp3 = VecXf::Zero(temp1.rows());
+            temp2.leftCols(CPARS)
+                    = temp1.leftCols(CPARS);
+            temp2.middleCols(hIdx, 8)
+                    = temp1.middleCols(CPARS, 8) * EF->adHostF[aidx].transpose();
+            temp2.middleCols(tIdx, 8)
+                    = temp1.middleCols(CPARS, 8) * EF->adTargetF[aidx].transpose();
+            temp3 = temp1.rightCols(1);
+            EF->Js.push_back(temp2);
+            EF->rs.push_back(temp3);
         }
 
     if (usePrior) {

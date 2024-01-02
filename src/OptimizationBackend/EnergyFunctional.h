@@ -105,6 +105,7 @@ public:
     void qr(MatXXc &Jp, MatXXc &Jl);
     void qr_v(VecXc &Jp, MatXXcr &Jl);
     void qr2(MatXXcr &Jp);
+    void qr2f(MatXXfr &Jp);
     void qr2_v(VecXc &Jl, int k);
     void qr2_householder(MatXXc &R);
     void qr3(MatXXcr &Jp, MatXXcr &Jl, VecXc &Jr);

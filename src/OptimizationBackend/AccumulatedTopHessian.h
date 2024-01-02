@@ -68,13 +68,13 @@ public:
             if(myH != 0) delete[] myH;
             if(myJ != 0) delete[] myJ;
             myH = new Mat1313f[nFrames * nFrames];
-            myJ = new MatXXcr[nFrames * nFrames];
+            myJ = new std::vector<MatXXfr>[nFrames * nFrames];
 		}
 
 		for(int i=0;i<nFrames*nFrames;i++) {
             acc[tid][i].initialize();
             myH[i].setZero();
-            myJ[i] = MatXXcr::Zero(0, 13);
+            myJ[i].clear();
         }
 
 		nframes[tid]=nFrames;
@@ -103,7 +103,7 @@ public:
 	int nres[NUM_THREADS];
 
     Mat1313f *myH;
-    MatXXcr *myJ;
+    std::vector<MatXXcr> *myJ;
 
 private:
 
